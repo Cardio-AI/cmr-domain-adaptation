@@ -1,0 +1,12 @@
+.git
+data
+docs
+models
+notebooks
+reports
+venv
+*.env
+*.gitignore
+test*
+
+*Makefile

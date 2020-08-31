@@ -1,0 +1,10 @@
+version: '3'
+services:
+  handwritten_digits:
+    build: .
+    ports:
+     - "5000:5000"
+    volumes:
+     - models:/code/models
+volumes:
+  models:
