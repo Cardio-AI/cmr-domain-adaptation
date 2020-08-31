@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import SimpleITK as sitk
 from sklearn.metrics import confusion_matrix
-from src.utils.utils_io import save_plot, ensure_dir
+from src.utils.Utils_io import save_plot, ensure_dir
 import SimpleITK as sitk
 from matplotlib.ticker import PercentFormatter
 from collections import Counter

@@ -8,9 +8,8 @@ import os
 import SimpleITK as sitk
 from numpy import newaxis
 from skimage.transform import resize
-from src.utils.utils_io import ensure_dir
+from src.utils.Utils_io import ensure_dir
 from src.visualization.Visualize import plot_value_histogram
-import keras
 import yaml
 from time import time
 from sklearn.model_selection import KFold

@@ -10,8 +10,8 @@ import tensorflow.keras.layers as kl
 import src
 import src.models.KerasLayers as ownkl
 import src.models.ModelUtils as mutils
-import keras.regularizers as regularizers
-from keras.models import Model
+import tensorflow.keras.regularizers as regularizers
+from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import Dropout

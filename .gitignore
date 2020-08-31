@@ -1,5 +1,7 @@
 # pycharm files
 .idea
+venv/
+*.nrrd
 
 # test data
 *.npy

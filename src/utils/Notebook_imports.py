@@ -1,7 +1,7 @@
 # central way to get all standard library available in one import
 
-from pyforest import *
 import logging
+import os
 import json
 import yaml
 import glob
@@ -15,7 +15,7 @@ import seaborn as sb
 
 #from keras.utils import plot_model
 #from src.utils.Tensorflow_helper import choose_gpu_by_id
-from src.utils.utils_io import Console_and_file_logger, ensure_dir
+from src.utils.Utils_io import Console_and_file_logger, ensure_dir
 
 # make jupyter able to display multiple lines of variables in one cell
 from IPython.core.interactiveshell import InteractiveShell
