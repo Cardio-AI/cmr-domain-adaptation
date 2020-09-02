@@ -2,6 +2,9 @@
 .idea
 venv/
 *.nrrd
+*.json
+*.pdf
+*.csv
 
 # test data
 *.npy

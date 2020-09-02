@@ -1,6 +1,7 @@
 # central way to get all standard library available in one import
 
 import logging
+import matplotlib.pyplot as plt
 import os
 import json
 import yaml
