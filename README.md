@@ -1,131 +1,76 @@
 3D-MRI-Domain-Adoption
 ==============================
 
-Model to learn the affine transformation from AX CMR towards SAX CMR.
+This repository includes the python helper function, model definition and trainings notebooks to trainn a tensorflow deep learning model, which transforms AX CMR images into the well known SAX domain.
 
-Project Organization
+Overview:
+--------
+Figure of the final pipeline
+Use the Notebooks to interact with the python functions within the src directories.
+
+Project Structure
 ------------
 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train`
+    ├── Makefile           <- Makefile with commands like 'make environment' or 'make requirement'
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
-    │   ├── external       <- Data from third party sources.
+    │   ├── metadata       <- Excel and csv files with additional metadata
     │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
+    │   ├── predicted      <- Model predictions, will be used for the evaluations
     │   └── raw            <- The original, immutable data dump.
-    │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
     │
     ├── models             <- Trained and serialized models, model predictions, or model summaries
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── notebooks          <- Jupyter notebooks. 
+    │   ├── Dataset        <- call the dataset helper functions, analyze the datasets
+    │   ├── Evaluate       <- Evaluate the model performance, create plots
+    │   ├── Predict        <- Use the models to predict 
+    │   ├── Train          <- Train a new model
+    │   └── Test_IO        <- IO tests
+    │   └── Test_Models    <- Tensorflow functional or subclassing tests
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
+    │   ├── configs        <- Experiment config files as json
+    │   ├── figures        <- Generated graphics and figures to be used in reporting
+    │   ├── history        <- Tensorboard trainings history files
+    │   └── tensorboard_logs  <- Generated graphics and figures to be used in reporting
     │
     ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
     │                         generated with `pip freeze > requirements.txt`
     │
     ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
-    │
-    └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org
+    ├── src                <- Helper functions that will be used by the notebooks.
+        ├── data           <- create, preprocess and extract the nrrd files
+        ├── models         <- Modelzoo, Modelutils and Tensorflow layers
+        ├── utils          <- Metrics, callbacks, io-utils, notebook imports
+        └── visualization  <- Plots for the data, generator or evaluations
 
-Contributions:
+Paper:
 --------
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+- link to paper if accepted
 
+- info for cite
 
-Example:
---------
-<p><small>Example project <a target="_blank" href="https://github.com/minority4u/keras_flask_deployment">Example datascience project build on tensorflow and flask</a>. #tensorflow # flask</small></p>
-
-
-Setup native with OSX and Ubuntu
+Setup native with OSX or Ubuntu
 ------------
-
-- Precondition Python 3.6 locally installed
+### Preconditions: 
+- Python 3.6 locally installed 
 (e.g.:  <a target="_blank" href="https://www.anaconda.com/download/#macos">Anaconda</a>)
+- Installed nvidia drivers, cuda and cudnn 
+(e.g.:  <a target="_blank" href="https://www.tensorflow.org/install/gpu">tensorflow</a>)
 
-
-- clone repository
+### Local setup
+- Clone repository
 ```
-git clone https://github.com/minority4u/keras_flask_deployment
-cd keras_flask_deployment
+git clone %reponame%
+cd %reponame%
 ```
-
-- Install all Dependencies, and start the app (all in one), works with OSX and Linux
+- Create a virtual environment either via virtualenv or conda
 ```
-make run
+make environment
 ```
-
-Setup native with Windows
-------------
-
-- Precondition Python 3.6 locally installed
-(e.g.:  <a target="_blank" href="https://www.anaconda.com/download/#macos">Anaconda</a>)
-
-- Clone Repository
+- Install dependencies via requirements.txt
 ```
-git clone https://github.com/minority4u/keras_flask_deployment
-cd keras_flask_deployment
-```
-
-```
-pip install virtualenv
-virtualenv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python src\app\app.py
-```
-
-Setup Docker
-------------
-
-- Precondition: Installed Docker Deamon (e.g.:  <a target="_blank" href="https://docs.docker.com/install/">Docker CE</a>)
-
-- Make sure you have docker-compose installed (e.g.:  <a target="_blank" href="https://docs.docker.com/compose/install/">Docker-Compose</a>)
-
-- Clone Repository
-```
-git clone https://github.com/minority4u/keras_flask_deployment
-cd keras_flask_deployment
-```
-- Create and run Docker-Container
-```
-docker-compose -up docker-compose.yml
-```
-
-
-Train new Model
-------------
-
-- OSX/Linux
-```
-make train
-```
-
-- Windows
-```
-Python src\models\train_model.py
+make requirement
 ```
