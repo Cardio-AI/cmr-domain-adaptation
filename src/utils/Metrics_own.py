@@ -24,16 +24,13 @@ def max_volume_loss(min_probabillity=0.8,):
         """
 
         y_pred = y_pred[...,1:] # ignore background, we want to maximize the number of captured ventricle voxel
-        #return 1-tf.reduce_mean(y_pred)
         y_pred = tf.cast(y_pred, dtype=tf.float32)
 
         sum_bigger_than = tf.reduce_max(y_pred, axis=-1)
-        #min_p = tf.fill(tf.shape(sum_bigger_than), min_probabillity)
-        #sum_bigger_than = tf.cast(tf.math.greater_equal(sum_bigger_than, min_p),tf.float32)
         mask_bigger_than = tf.cast(sum_bigger_than > min_probabillity, tf.float32)
         sum_bigger_than = sum_bigger_than * mask_bigger_than
 
-        return  1- tf.reduce_mean(sum_bigger_than)
+        return 1- tf.reduce_mean(sum_bigger_than)
 
     return max_loss
 
@@ -42,13 +39,25 @@ def loss_with_zero_mask(loss=mse, mask_smaller_than=0.01, weight_inplane=False,x
     """
     Loss-factory returns a loss which calculates a given loss-function (e.g. MSE) only for the region where y_true is greater than a given threshold
     This is necessary for our AX2SAX comparison, as we have different length of CMR stacks (AX2SAX gt is cropped at z = SAX.z + 20mm)
-    :param loss:
-    :param mask_smaller_than:
-    :param weight_inplane:
-    :param xy_shape:
+    Example inplane weighting which is multiplied to each slice of the volume
+    [[0.   0.   0.   0.   0.   0.   0.   0.   0.   0.  ]
+     [0.   0.25 0.25 0.25 0.25 0.25 0.25 0.25 0.25 0.  ]
+     [0.   0.25 0.5  0.5  0.5  0.5  0.5  0.5  0.25 0.  ]
+     [0.   0.25 0.5  0.75 0.75 0.75 0.75 0.5  0.25 0.  ]
+     [0.   0.25 0.5  0.75 1.   1.   0.75 0.5  0.25 0.  ]
+     [0.   0.25 0.5  0.75 1.   1.   0.75 0.5  0.25 0.  ]
+     [0.   0.25 0.5  0.75 0.75 0.75 0.75 0.5  0.25 0.  ]
+     [0.   0.25 0.5  0.5  0.5  0.5  0.5  0.5  0.25 0.  ]
+     [0.   0.25 0.25 0.25 0.25 0.25 0.25 0.25 0.25 0.  ]
+     [0.   0.   0.   0.   0.   0.   0.   0.   0.   0.  ]]
+    :param loss: any callable loss function. e.g. tf.keras.losses
+    :param mask_smaller_than: float, threshold to calculate the loss only for voxels where gt is greater
+    :param weight_inplane: bool, apply in-plane weighting
+    :param xy_shape: int, number of in-plane pixels
     :return:
     """
 
+    # in-plane weighting, which helps to focus on the voxels close to the center
     x_shape = xy_shape
     y_shape = xy_shape
     temp = np.zeros((x_shape, y_shape))

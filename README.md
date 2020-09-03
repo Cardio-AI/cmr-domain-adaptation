@@ -25,7 +25,7 @@ Project Structure
     ├── notebooks          <- Jupyter notebooks. 
     │   ├── Dataset        <- call the dataset helper functions, analyze the datasets
     │   ├── Evaluate       <- Evaluate the model performance, create plots
-    │   ├── Predict        <- Use the models to predict 
+    │   ├── Predict        <- Use the models and predict the segmentation
     │   ├── Train          <- Train a new model
     │   └── Test_IO        <- IO tests
     │   └── Test_Models    <- Tensorflow functional or subclassing tests
@@ -39,7 +39,7 @@ Project Structure
     ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
     │                         generated with `pip freeze > requirements.txt`
     │
-    ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
+    ├── setup.py           <- Makes project pip installable (pip install -e .) so src can be imported
     ├── src                <- Helper functions that will be used by the notebooks.
         ├── data           <- create, preprocess and extract the nrrd files
         ├── models         <- Modelzoo, Modelutils and Tensorflow layers
@@ -58,7 +58,7 @@ Setup native with OSX or Ubuntu
 - Python 3.6 locally installed 
 (e.g.:  <a target="_blank" href="https://www.anaconda.com/download/#macos">Anaconda</a>)
 - Installed nvidia drivers, cuda and cudnn 
-(e.g.:  <a target="_blank" href="https://www.tensorflow.org/install/gpu">tensorflow</a>)
+(e.g.:  <a target="_blank" href="https://www.tensorflow.org/install/gpu">Tensorflow</a>)
 
 ### Local setup
 - Clone repository

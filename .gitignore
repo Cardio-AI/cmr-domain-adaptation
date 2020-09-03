@@ -8,6 +8,13 @@ venv/
 
 # test data
 *.npy
+*.jpg
+*.png
+*.tiff
+*.tif
+*.dcm
+
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

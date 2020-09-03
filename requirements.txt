@@ -22,4 +22,6 @@ scikit-image
 albumentations
 nibabel
 tqdm
+graphviz
+pydot
 

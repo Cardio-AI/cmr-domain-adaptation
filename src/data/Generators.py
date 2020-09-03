@@ -308,7 +308,7 @@ class DataGenerator(BaseGenerator):
                 new_size_msk = (int(x_s_msk), int(y_s_msk), int(z_s_msk))
 
                 # we can also resize with the resamplefilter from sitk
-                # this cuts the image on the bottom and right
+                # this cuts the image at the bottom and right
                 #new_size = self.DIM
             else:
                 raise ('dimension not supported: {}'.format(sitk_img.GetDimension()))
@@ -684,7 +684,7 @@ class CycleMotionDataGenerator(DataGenerator):
         y = np.empty_like(self.Y_SHAPE) # axtosax
         x2 = np.empty_like(self.X_SHAPE) # sax
         y2 = np.empty_like(self.X_SHAPE)  # saxtoax
-        empty = np.empty_like(self.X_SHAPE)  # saxtoax
+        empty = np.empty_like(self.X_SHAPE)  # saxtoax modified
         futures = set()
 
         # spawn one thread per worker
