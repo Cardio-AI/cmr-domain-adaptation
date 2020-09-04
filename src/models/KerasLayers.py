@@ -20,7 +20,7 @@ class UpSampling3DInterpol(UpSampling3D):
         self.x = int(size[1])
         self.y = int(size[2])
         self.interpolation = interpolation
-        super(UpSampling3DInterpol, self).__init__(**kwargs)
+        super(self.__class__, self).__init__(**kwargs)
 
     def call(self, x):
         """

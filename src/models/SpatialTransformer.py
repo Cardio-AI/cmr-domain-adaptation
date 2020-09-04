@@ -30,7 +30,7 @@ import src.utils.Metrics_own as metr
 from tensorflow.keras.optimizers import Adam
 
 from src.models.ModelUtils import get_optimizer
-from src.models.KerasLayers import downsampling_block, conv_layer
+from src.models.KerasLayers import downsampling_block_fn, conv_layer_fn
 from src.models.Unets import unet
 from src.models.src import losses
 
@@ -200,5 +200,35 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         return model
 
 
+# ST to apply m to an volume
+def create_affine_transformer_fixed(config, metrics=None, networkname='affine_transformer_fixed', fill_value=0, interp_method='linear'):
+    """
+    Apply a learned transformation matrix to an input image, no training possible
+    :param config:  Key value pairs for image size and other network parameters
+    :param metrics: list of tensorflow or keras compatible metrics
+    :param networkname: string, name of this model scope
+    :param fill_value:
+    :return: :return: compiled tf.keras model
+    """
+    if tf.distribute.has_strategy():
+        strategy = tf.distribute.get_strategy()
+    else:
+        # distribute the training with the mirrored data paradigm across multiple gpus if available, if not use gpu 0
+        strategy = tf.distribute.MirroredStrategy(devices=config.get('GPUS', ["/gpu:0"]))
+    #tf.print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+    with strategy.scope():
 
+        inputs = Input((*config.get('DIM', [10, 224, 224]), config.get('IMG_CHANNELS', 1)), dtype=np.float32)
+        input_matrix = Input((12), dtype=np.float32)
+        indexing = config.get('INDEXING','ij')
+
+        # warp the source with the flow
+        y = nrn_layers.SpatialTransformer(interp_method=interp_method, indexing=indexing, ident=False, fill_value=fill_value)([inputs, input_matrix])
+
+        model = Model(inputs=[inputs, input_matrix], outputs=[y, input_matrix], name=networkname)
+        model.compile(optimizer=get_optimizer(config, networkname),
+                      loss=['mse', losses.Grad('l2').loss],
+                      loss_weights=[1.0, 0.01])
+
+        return model
 
