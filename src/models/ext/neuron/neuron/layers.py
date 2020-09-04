@@ -292,6 +292,8 @@ class SpatialTransformer(Layer):
         assert len(inputs) == 2, "inputs has to be len 2, found: %d" % len(inputs)
         vol = inputs[0]
         trf = inputs[1]
+        vol = tf.cast(vol, tf.float16)
+        trf = tf.cast(trf, tf.float16)
 
         # necessary for multi_gpu models...
         vol = K.reshape(vol, [-1, *self.inshape[0][1:]])
