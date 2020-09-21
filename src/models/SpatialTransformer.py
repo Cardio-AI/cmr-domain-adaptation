@@ -1,6 +1,11 @@
-# spatial transformer architecture, based on the voxelmorph code
-'''tensorflow/keras utilities for the neuron project
+'''
+Unsupervised Domain Adaption from Axial
+Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
+Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 
+Spatial transformer architecture, based on the voxelmorph code
+
+tensorflow/keras utilities for the neuron project
 Unsupervised Learning for Fast Probabilistic Diffeomorphic Registration
 Adrian V. Dalca, Guha Balakrishnan, John Guttag, Mert R. Sabuncu
 MICCAI 2018.
@@ -12,13 +17,8 @@ import sys
 # third party
 import numpy as np
 import tensorflow
-from tensorflow import keras
-import tensorflow.keras.backend as K
 from tensorflow.keras.models import Model
-import tensorflow.keras.layers as kl
-from tensorflow.keras.layers import Layer
 from tensorflow.keras.layers import Conv3D, Activation, Input, UpSampling3D, concatenate
-from tensorflow.keras.layers import LeakyReLU, Reshape, Lambda, Dropout
 from src.models.KerasLayers import Euler2Matrix, ScaleLayer, UnetWrapper, ConvEncoder, Inverse3DMatrix
 from tensorflow.keras.initializers import RandomNormal
 import tensorflow.keras.initializers
@@ -26,20 +26,15 @@ import tensorflow as tf
 import logging
 import src.utils.Metrics_own as metr
 
-# import neuron layers, which will be useful for Transforming.
-from tensorflow.keras.optimizers import Adam
 
 from src.models.ModelUtils import get_optimizer
-from src.models.KerasLayers import downsampling_block_fn, conv_layer_fn
-from src.models.Unets import unet
-from src.models.src import losses
+
 
 sys.path.append('src/models/ext/neuron')
 sys.path.append('src/models/ext/pynd-lib')
 sys.path.append('src/models/ext/pytools-lib')
 import src.models.ext.neuron.neuron.layers as nrn_layers
-import src.models.ext.neuron.neuron.models as nrn_models
-import src.models.ext.neuron.neuron.utils as nrn_utils
+
 
 
 def create_affine_cycle_transformer_model(config, metrics=None, networkname='affine_cycle_transformer', unet=None):
@@ -207,14 +202,14 @@ def create_affine_transformer_fixed(config, metrics=None, networkname='affine_tr
     :param metrics: list of tensorflow or keras compatible metrics
     :param networkname: string, name of this model scope
     :param fill_value:
-    :return: :return: compiled tf.keras model
+    :return: compiled tf.keras model
     """
     if tf.distribute.has_strategy():
         strategy = tf.distribute.get_strategy()
     else:
         # distribute the training with the mirrored data paradigm across multiple gpus if available, if not use gpu 0
         strategy = tf.distribute.MirroredStrategy(devices=config.get('GPUS', ["/gpu:0"]))
-    #tf.print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+
     with strategy.scope():
 
         inputs = Input((*config.get('DIM', [10, 224, 224]), config.get('IMG_CHANNELS', 1)), dtype=np.float32)
