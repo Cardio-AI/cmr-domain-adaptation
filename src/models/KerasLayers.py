@@ -155,7 +155,8 @@ class UnetWrapper(Layer):
             x = [tf.compat.v1.image.resize(images, size=self.unet_inplane, method=tf.image.ResizeMethod.BILINEAR,
                                            align_corners=True, name='resize') for images in x]
         x = [self.unet(img) for img in x]
-        return tf.stack(x, axis=1)
+        x = tf.stack(x, axis=1)
+        return x
 
     def get_config(self):
         """ __init__() is overwritten, need to override this method to enable model.to_json() for this layer"""

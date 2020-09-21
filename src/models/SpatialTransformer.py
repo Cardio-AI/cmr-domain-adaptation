@@ -169,8 +169,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             # to learn a second set of translation parameters which maximize the Unet probability
             mask_prob = UnetWrapper(unet, name='mask_prob')(ax2sax_mod)  #
             m_mod_inv = Inverse3DMatrix()(m_mod)  #
-            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax')([mask_prob, m_mod_inv])
-
+            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax_')([mask_prob, m_mod_inv])
             # Define the model output
             outputs = [ax2sax, sax2ax, ax2sax_mod, mask_prob, mask2ax, m, m_mod]
 
@@ -226,9 +225,9 @@ def create_affine_transformer_fixed(config, metrics=None, networkname='affine_tr
         y = nrn_layers.SpatialTransformer(interp_method=interp_method, indexing=indexing, ident=False, fill_value=fill_value)([inputs, input_matrix])
 
         model = Model(inputs=[inputs, input_matrix], outputs=[y, input_matrix], name=networkname)
-        model.compile(optimizer=get_optimizer(config, networkname),
+        """model.compile(optimizer=get_optimizer(config, networkname),
                       loss=['mse', losses.Grad('l2').loss],
-                      loss_weights=[1.0, 0.01])
+                      loss_weights=[1.0, 0.01])"""
 
         return model
 
