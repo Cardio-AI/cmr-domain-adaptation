@@ -164,7 +164,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             # to learn a second set of translation parameters which maximize the Unet probability
             mask_prob = UnetWrapper(unet, name='mask_prob')(ax2sax_mod)  #
             m_mod_inv = Inverse3DMatrix()(m_mod)  #
-            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax_')([mask_prob, m_mod_inv])
+            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax')([mask_prob, m_mod_inv])
             # Define the model output
             outputs = [ax2sax, sax2ax, ax2sax_mod, mask_prob, mask2ax, m, m_mod]
 
@@ -172,13 +172,13 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             losses = {
                 'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2]),
                 'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2]),
-                'mask2ax': metr.max_volume_loss(min_probabillity=0.9)
+                'mask_prob': metr.max_volume_loss(min_probabillity=0.9)
             }
 
             # Define the loss weighting
             loss_w = {
-                'ax2sax': 20.0,
-                'sax2ax': 10.0,
+                'ax2sax': 1.0,
+                'sax2ax': 1.0,
                 'mask2ax': 1.0
             }
         else: # no u-net given

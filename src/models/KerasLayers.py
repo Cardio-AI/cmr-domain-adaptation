@@ -145,15 +145,17 @@ class UnetWrapper(Layer):
         self.unet_inplane = unet_inplane
 
     def call(self, x, **kwargs):
+        input_dtype = x.dtype
         # Call the unet with each slice, map_fn needs more memory
         # x = tf.transpose(x, [1,0,2,3,4])
         # x = tf.map_fn(self.unet, x,)
         # x = tf.transpose(x, [1, 0, 2, 3,4])
         x = tf.unstack(x, axis=1)
+
         # resize if input inplane resolution is different to unet input shape
-        if not tf.equal(tf.shape(x)[-3], self.unet_inplane[0]) and tf.equal(tf.shape(x)[-2], self.unet_inplane[1]):
-            x = [tf.compat.v1.image.resize(images, size=self.unet_inplane, method=tf.image.ResizeMethod.BILINEAR,
-                                           align_corners=True, name='resize') for images in x]
+        #if not tf.equal(tf.shape(x)[-3], self.unet_inplane[0]) and tf.equal(tf.shape(x)[-2], self.unet_inplane[1]):
+        x = [tf.cast(tf.compat.v1.image.resize(images, size=self.unet_inplane, method=tf.image.ResizeMethod.BILINEAR,
+                                           align_corners=True, name='resize'),input_dtype) for images in x]
         x = [self.unet(img) for img in x]
         x = tf.stack(x, axis=1)
         return x
