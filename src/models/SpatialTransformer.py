@@ -122,6 +122,10 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         ndims = len(config.get('DIM', [10, 224, 224]))
         depth = config.get('DEPTH', 4)
         indexing = config.get('INDEXING', 'ij')
+        ax_loss_weighting = config.get('AX_WEIGHT', 1.0)
+        sax_loss_weighting = config.get('SAX_WEIGHT', 1.0)
+        prob_loss_weighting = config.get('PROB_WEIGHT', 1.0)
+
 
         # increase the dropout through the layer depth
         dropouts = list(np.linspace(drop_1, drop_3, depth))
@@ -172,14 +176,14 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             losses = {
                 'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2]),
                 'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2]),
-                'mask_prob': metr.max_volume_loss(min_probabillity=0.9)
+                'mask2ax': metr.max_volume_loss(min_probabillity=0.9)
             }
 
             # Define the loss weighting
             loss_w = {
-                'ax2sax': 1.0,
-                'sax2ax': 1.0,
-                'mask2ax': 1.0
+                'ax2sax': ax_loss_weighting,
+                'sax2ax': sax_loss_weighting,
+                'mask2ax': prob_loss_weighting
             }
         else: # no u-net given
             outputs = [ax2sax, sax2ax, m]
