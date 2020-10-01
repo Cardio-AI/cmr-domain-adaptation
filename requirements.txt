@@ -24,5 +24,4 @@ nibabel
 tqdm
 graphviz
 pydot
-ipyfilechooser
-medpy
+

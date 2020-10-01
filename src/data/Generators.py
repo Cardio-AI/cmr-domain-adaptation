@@ -685,7 +685,6 @@ class CycleMotionDataGenerator(DataGenerator):
         x2 = np.empty_like(self.X_SHAPE) # sax
         y2 = np.empty_like(self.X_SHAPE)  # saxtoax
         empty = np.empty_like(self.X_SHAPE)  # saxtoax modified
-        mask = np.empty((self.BATCHSIZE, 224,224, self.IMG_CHANNELS), dtype=np.float32)
         futures = set()
 
         # spawn one thread per worker
@@ -725,8 +724,8 @@ class CycleMotionDataGenerator(DataGenerator):
             zeros = np.zeros(12, dtype=np.float32)
             ident = np.eye(4, dtype=np.float32)[:3,:]
             return tuple([[x.astype(np.float32), x2.astype(np.float32)],
-                  [y.astype(np.float32), y2.astype(np.float32), empty.astype(np.float32), ident,
-                   ident, ident, ident]])
+                  [y.astype(np.float32), y2.astype(np.float32), empty.astype(np.float32), empty.astype(np.float32),
+                   empty.astype(np.float32), ident, ident]])
 
     def __preprocess_one_image__(self, i, ID):
 

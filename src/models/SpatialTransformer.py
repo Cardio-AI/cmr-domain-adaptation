@@ -122,10 +122,6 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         ndims = len(config.get('DIM', [10, 224, 224]))
         depth = config.get('DEPTH', 4)
         indexing = config.get('INDEXING', 'ij')
-        ax_loss_weighting = config.get('AX_WEIGHT', 1.0)
-        sax_loss_weighting = config.get('SAX_WEIGHT', 1.0)
-        prob_loss_weighting = config.get('PROB_WEIGHT', 1.0)
-
 
         # increase the dropout through the layer depth
         dropouts = list(np.linspace(drop_1, drop_3, depth))
@@ -168,7 +164,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             # to learn a second set of translation parameters which maximize the Unet probability
             mask_prob = UnetWrapper(unet, name='mask_prob')(ax2sax_mod)  #
             m_mod_inv = Inverse3DMatrix()(m_mod)  #
-            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax')([mask_prob, m_mod_inv])
+            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax_')([mask_prob, m_mod_inv])
             # Define the model output
             outputs = [ax2sax, sax2ax, ax2sax_mod, mask_prob, mask2ax, m, m_mod]
 
@@ -181,9 +177,9 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
 
             # Define the loss weighting
             loss_w = {
-                'ax2sax': ax_loss_weighting,
-                'sax2ax': sax_loss_weighting,
-                'mask2ax': prob_loss_weighting
+                'ax2sax': 20.0,
+                'sax2ax': 10.0,
+                'mask2ax': 1.0
             }
         else: # no u-net given
             outputs = [ax2sax, sax2ax, m]
