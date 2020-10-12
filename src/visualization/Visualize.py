@@ -80,7 +80,7 @@ def show_2D_or_3D(img=None, mask=None):
         raise NotImplementedError('Wrong shape Exception in: {}'.format('show_2D_or_3D()'))
 
 
-def create_eval_plot(df_dice, df_hd, df_vol, eval):
+def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
 
     # create a violinplot with an integrated bland altmann plot
     # nobs = median
@@ -89,10 +89,14 @@ def create_eval_plot(df_dice, df_hd, df_vol, eval):
     my_pal_1 = {"Dice LV": "dodgerblue", "Dice MYO": "g", "Dice RV":"darkorange"}
     my_pal_2 = {"Err LV(ml)": "dodgerblue", "Err MYO(ml)": "g", "Err RV(ml)":"darkorange"}
     my_pal_3 = {"Volume LV": "dodgerblue", "Volume MYO": "g", "Volume RV":"darkorange"}
+    hd_pal = {"Hausdorff LV": "dodgerblue", "Hausdorff MYO": "g", "Hausdorff RV": "darkorange"}
 
 
     plt.rcParams.update({'font.size': 20})
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25,8), sharey=False)
+    if df_haus is not None:
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(25,8), sharey=False)
+    else:
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 8), sharey=False)
 
     ax1 = sns.violinplot(x= 'variable',y = 'value', data=df_dice,order=["Dice LV", "Dice MYO", "Dice RV"],palette=my_pal_1 , showfliers = outliers, ax=ax1)
     medians = df_dice.groupby(['variable'])['value'].median().round(2)
@@ -106,14 +110,15 @@ def create_eval_plot(df_dice, df_hd, df_vol, eval):
     plt.setp(ax1, xlabel='')
     ax1.set_xticklabels(['LV','MYO', 'RV'])
 
+    # create bland altmannplot from vol diff
     ax2 = bland_altman_metric_plot(eval, ax2)
 
+    # create violin plot for the volume
     ax3 = sns.violinplot(x= 'variable',y = 'value',order=["Volume LV", "Volume MYO", "Volume RV"], palette=my_pal_3, showfliers = outliers, data=df_vol, ax=ax3)
 
     medians = df_vol.groupby(['variable'])['value'].median().round(2)
     sd = df_vol.groupby(['variable'])['value'].std().round(2)
     nobs = ['{}+/-{}'.format(m,s) for m,s in zip(medians, sd)]
-
 
     for tick,label in zip(range(len(ax3.get_xticklabels())),ax3.get_xticklabels()):
         _ = ax3.text(tick, medians[tick], nobs[tick],horizontalalignment='center', size='x-small', color='black', weight='semibold')
@@ -121,6 +126,25 @@ def create_eval_plot(df_dice, df_hd, df_vol, eval):
     plt.setp(ax3, ylabel=('Vol size in ml'))
     plt.setp(ax3, xlabel='')
     ax3.set_xticklabels(['LV','MYO', 'RV'])
+
+    ax4 = sns.violinplot(x='variable', y='value', order=["Hausdorff LV", "Hausdorff MYO", "Hausdorff RV"], palette=hd_pal,
+                         showfliers=outliers, data=df_haus, ax=ax4)
+
+    medians = df_haus.groupby(['variable'])['value'].median().round(2)
+    sd = df_haus.groupby(['variable'])['value'].std().round(2)
+    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(medians, sd)]
+
+    for tick, label in zip(range(len(ax4.get_xticklabels())), ax4.get_xticklabels()):
+        _ = ax4.text(tick, medians[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
+                     weight='semibold')
+    plt.setp(ax4, ylim=(0, 50))
+    plt.setp(ax4, ylabel=('Hausdorff distance'))
+    plt.setp(ax4, xlabel='')
+    ax4.set_xticklabels(['LV','MYO', 'RV'])
+
+
+
+
     plt.tight_layout()
     return fig
 

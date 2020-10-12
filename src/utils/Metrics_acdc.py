@@ -45,9 +45,9 @@ import numpy as np
 
 
 
-HEADER = ["Name", "Dice LV", "Volume LV", "Err LV(ml)",
-          "Dice RV", "Volume RV", "Err RV(ml)",
-          "Dice MYO", "Volume MYO", "Err MYO(ml)"]
+HEADER = ["Name", "Dice LV", "Volume LV", "Err LV(ml)", "Hausdorff LV",
+          "Dice RV", "Volume RV", "Err RV(ml)", "Hausdorff RV",
+          "Dice MYO", "Volume MYO", "Err MYO(ml)", "Hausdorff MYO"]
 
 #
 # Utils functions used to sort strings into a natural order
@@ -174,12 +174,12 @@ def metrics(img_gt, img_pred, voxel_size):
 
         # Compute the Dice
         dice = dc(gt_c_i, pred_c_i)
-
+        hausdorff = hd(pred_c_i, gt_c_i)
         # Compute volume
         volpred = pred_c_i.sum() * np.prod(voxel_size) / 1000.
         volgt = gt_c_i.sum() * np.prod(voxel_size) / 1000.
 
-        res += [dice, volpred, volpred-volgt]
+        res += [dice, volpred, volpred-volgt, hausdorff]
 
     return res
 
