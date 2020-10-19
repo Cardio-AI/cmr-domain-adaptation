@@ -42,22 +42,22 @@ def get_callbacks(config={}, batch_generator=None, validation_generator=None, me
     """callbacks.append(
         WeightsSaver(config.get('MODEL_PATH', 'temp/models'),
                      model_freq=2))"""
-    callbacks.append(
+    """callbacks.append(
         ModelCheckpoint(os.path.join(config['MODEL_PATH'], ''), # could also be 'model.h5 to save only the weights
                         verbose=1,
                         save_best_only=True,
                         save_weights_only=False,
                         monitor=config.get('SAVE_MODEL_FUNCTION', 'loss'),
                         mode=config.get('SAVE_MODEL_MODE', 'min'),
-                        save_freq='epoch'))
-    """callbacks.append(
+                        save_freq='epoch'))"""
+    callbacks.append(
         ModelCheckpoint(os.path.join(config['MODEL_PATH'], 'model.h5'),  # could also be 'model.h5 to save only the weights
                         verbose=1,
                         save_best_only=True,
                         save_weights_only=True,
                         monitor=config.get('SAVE_MODEL_FUNCTION', 'loss'),
                         mode=config.get('SAVE_MODEL_MODE', 'min'),
-                        save_freq='epoch'))"""
+                        save_freq='epoch'))
     callbacks.append(
         tensorflow.keras.callbacks.TensorBoard(log_dir=config.get('TENSORBOARD_LOG_DIR', 'temp/tf_log'),
                                                histogram_freq=0,
@@ -302,7 +302,7 @@ def finetune_with_SGD(config, train_g, val_g, model, metrics, epoch_init):
     :return:
     """
     import tensorflow as tf
-    from src.utils.my_metrics import dice_coef_labels_loss
+    from src.utils.Metrics_own import dice_coef_labels_loss
     loss_f = config.get('LOSS_FUNCTION', tf.keras.metrics.binary_crossentropy)
     #loss_f = dice_coef_labels_loss
     lr = config.get('LEARNING_RATE', 0.001)

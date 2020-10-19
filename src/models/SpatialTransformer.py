@@ -45,6 +45,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
     :param metrics: list of tensorflow or keras compatible metrics
     :param networkname: string, name of this model scope
     :param unet: tf.keras.Model, pre-trained 2D U-net
+    :param use_mask2ax_prob: bool, use SAX or SAX2AX mask to max the probability
     :return: compiled tf.keras.Model
 
     The returned tf.keras.Model expects the following input during training:
@@ -121,7 +122,16 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         bn_first = config.get('BN_FIRST', False)
         ndims = len(config.get('DIM', [10, 224, 224]))
         depth = config.get('DEPTH', 4)
+        dense_weights = config.get('DENSE_WEIGHTS', 256)
         indexing = config.get('INDEXING', 'ij')
+        ax_weight = config.get('AX_WEIGHT', 2)
+        sax_weight = config.get('SAX_WEIGHT', 2)
+        prob_weight = config.get('PROB_WEIGHT', 1)
+        min_unet_probability = config.get('MIN_UNET_PROBABILITY', 0.9) # sum the foreground voxels with a prob higher than
+        use_mask2ax_prob = config.get('USE_SAX2AX_PROB', True) # otherwise use the SAX probability
+        weight_mse_inplane = config.get('WEIGHT_MSE_INPLANE', True) # weight the MSE loss pixels in the center have greater weights
+        mask_smaller_than_threshold = config.get('MASK_SMALLER_THAN_THRESHOLD', 0.01) # calc the MSe loss only where our image has values greater than
+
 
         # increase the dropout through the layer depth
         dropouts = list(np.linspace(drop_1, drop_3, depth))
@@ -143,7 +153,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         # Shrink the encoding towards the euler angles and translation params,
         # no additional dense layers before the GAP layer
         m_raw = tensorflow.keras.layers.GlobalAveragePooling3D()(enc)  # m.shape --> b, 512
-        m_raw = tensorflow.keras.layers.Dense(256, kernel_initializer=kernel_init, activation=activation,name='dense1')(m_raw)
+        m_raw = tensorflow.keras.layers.Dense(dense_weights, kernel_initializer=kernel_init, activation=activation,name='dense1')(m_raw)
         m_raw = tensorflow.keras.layers.Dense(9, kernel_initializer=RandomNormal(mean=0.0, stddev=1e-10),activation=activation, name='dense2')(m_raw)
         m = Euler2Matrix(name='ax2sax_matrix')(m_raw[:, 0:6])
 
@@ -164,29 +174,35 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             # to learn a second set of translation parameters which maximize the Unet probability
             mask_prob = UnetWrapper(unet, name='mask_prob')(ax2sax_mod)  #
             m_mod_inv = Inverse3DMatrix()(m_mod)  #
-            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax_')([mask_prob, m_mod_inv])
+            mask2ax = nrn_layers.SpatialTransformer(interp_method='nearest', indexing=indexing, ident=False, fill_value=0, name='mask2ax')([mask_prob, m_mod_inv])
             # Define the model output
             outputs = [ax2sax, sax2ax, ax2sax_mod, mask_prob, mask2ax, m, m_mod]
 
+            # Use the SAX predictions or the SAX2AX predictions to maximise the unet probability
+            if use_mask2ax_prob:
+                probability_object = 'mask2ax'
+            else:
+                probability_object = 'mask_prob'
+
             # Define the loss functions
             losses = {
-                'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2]),
-                'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2]),
-                'mask2ax': metr.max_volume_loss(min_probabillity=0.9)
+                'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2]),
+                'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2]),
+                probability_object: metr.max_volume_loss(min_probabillity=min_unet_probability)
             }
 
             # Define the loss weighting
             loss_w = {
-                'ax2sax': 20.0,
-                'sax2ax': 10.0,
-                'mask2ax': 1.0
+                'ax2sax': ax_weight,
+                'sax2ax': sax_weight,
+                probability_object: prob_weight
             }
         else: # no u-net given
             outputs = [ax2sax, sax2ax, m]
-            losses = {'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2]),
-                      'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=0.01, weight_inplane=True, xy_shape=input_shape[-2])}
-            loss_w = {'ax2sax': 20.0,
-                      'sax2ax': 10.0}
+            losses = {'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2]),
+                      'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2])}
+            loss_w = {'ax2sax': ax_weight,
+                      'sax2ax': sax_weight}
 
         model = Model(inputs=[inputs_ax, inputs_sax], outputs=outputs, name=networkname)
         model.compile(optimizer=get_optimizer(config, networkname), loss=losses, loss_weights=loss_w)

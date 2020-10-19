@@ -109,22 +109,24 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
             elif (reference_sitk_img.GetDimension() == new_image.GetDimension()):
 
                 # copy spacing, origin and rotation but keep size as it is
+                new_image.SetDirection(reference_sitk_img.GetDirection())
                 new_image.SetOrigin(reference_sitk_img.GetOrigin())
                 new_image.SetSpacing(reference_sitk_img.GetSpacing())
-                new_image.SetDirection(reference_sitk_img.GetDirection())
 
             # copy structural information to smaller images e.g. 4D to 3D
             elif reference_sitk_img.GetDimension() > new_image.GetDimension():
                 shape_ = len(new_image.GetSize())
                 reference_shape = len(reference_sitk_img.GetSize())
-                new_image.SetOrigin(reference_sitk_img.GetOrigin()[:shape_])
-                new_image.SetSpacing(reference_sitk_img.GetSpacing()[:shape_])
+
                 # copy direction to smaller images
                 # 1. extract the direction, 2. create a matrix, 3. slice by the new shape, 4. flatten
                 direction = np.array(reference_sitk_img.GetDirection())
                 dir_ = direction.reshape(reference_shape, reference_shape)
                 direction = dir_[:shape_, :shape_].flatten()
                 new_image.SetDirection(direction)
+
+                new_image.SetOrigin(reference_sitk_img.GetOrigin()[:shape_])
+                new_image.SetSpacing(reference_sitk_img.GetSpacing()[:shape_])
 
             # copy structural information to bigger images e.g. 3D to 4D, fill with 1.0 spacing
             else:

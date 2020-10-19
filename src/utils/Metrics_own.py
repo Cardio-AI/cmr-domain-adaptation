@@ -39,7 +39,7 @@ def loss_with_zero_mask(loss=mse, mask_smaller_than=0.01, weight_inplane=False,x
     """
     Loss-factory returns a loss which calculates a given loss-function (e.g. MSE) only for the region where y_true is greater than a given threshold
     This is necessary for our AX2SAX comparison, as we have different length of CMR stacks (AX2SAX gt is cropped at z = SAX.z + 20mm)
-    Example inplane weighting which is multiplied to each slice of the volume
+    Example in-plane weighting which is multiplied to each slice of the volume
     [[0.   0.   0.   0.   0.   0.   0.   0.   0.   0.  ]
      [0.   0.25 0.25 0.25 0.25 0.25 0.25 0.25 0.25 0.  ]
      [0.   0.25 0.5  0.5  0.5  0.5  0.5  0.5  0.25 0.  ]
@@ -53,7 +53,7 @@ def loss_with_zero_mask(loss=mse, mask_smaller_than=0.01, weight_inplane=False,x
     :param loss: any callable loss function. e.g. tf.keras.losses
     :param mask_smaller_than: float, threshold to calculate the loss only for voxels where gt is greater
     :param weight_inplane: bool, apply in-plane weighting
-    :param xy_shape: int, number of in-plane pixels
+    :param xy_shape: int, number of square in-plane pixels
     :return:
     """
 
@@ -70,7 +70,7 @@ def loss_with_zero_mask(loss=mse, mask_smaller_than=0.01, weight_inplane=False,x
     def my_loss(y_true, y_pred, weights_inplane=weights):
         """
         wrapper to either calculate a loss only on areas where the gt is greater than mask_smaller_than
-        and additionally weight the loss along the z axis to increase the importance of the first slices or the last ones
+        and additionally weight the loss in-plane to increase the importance of the voxels close to the center
         :param y_true:
         :param y_pred:
         :return:

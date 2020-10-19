@@ -174,7 +174,11 @@ def metrics(img_gt, img_pred, voxel_size):
 
         # Compute the Dice
         dice = dc(gt_c_i, pred_c_i)
-        hausdorff = hd(pred_c_i, gt_c_i)
+        try:
+            hausdorff = hd(pred_c_i, gt_c_i)
+        except Exception as e:
+            hausdorff = img_gt.shape[0]/4 # mark this hausdorff as a really huge error
+            print(str(e))
         # Compute volume
         volpred = pred_c_i.sum() * np.prod(voxel_size) / 1000.
         volgt = gt_c_i.sum() * np.prod(voxel_size) / 1000.

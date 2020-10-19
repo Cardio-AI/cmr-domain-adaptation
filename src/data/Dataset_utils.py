@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from src.utils.utils_io import Console_and_file_logger, ensure_dir
+from src.utils.Utils_io import Console_and_file_logger, ensure_dir
 from src.models.ModelUtils import load_pretrained_model
 import pandas as pd
 import platform

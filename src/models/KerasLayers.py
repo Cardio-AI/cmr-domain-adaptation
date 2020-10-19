@@ -138,23 +138,45 @@ class ScaleLayer(Layer):
 
 
 class UnetWrapper(Layer):
-    def __init__(self, unet, unet_inplane=(224, 224), trainable=False, **kwargs):
+    def __init__(self, unet, unet_inplane=(224, 224), resize=True, trainable=False, **kwargs):
         super(self.__class__, self).__init__(**kwargs)
         self.unet = unet
         self.unet.trainable = trainable
         self.unet_inplane = unet_inplane
+
+        self.resize = resize
 
     def call(self, x, **kwargs):
         # Call the unet with each slice, map_fn needs more memory
         # x = tf.transpose(x, [1,0,2,3,4])
         # x = tf.map_fn(self.unet, x,)
         # x = tf.transpose(x, [1, 0, 2, 3,4])
-        x = tf.unstack(x, axis=1)
+
         # resize if input inplane resolution is different to unet input shape
-        if not tf.equal(tf.shape(x)[-3], self.unet_inplane[0]) and tf.equal(tf.shape(x)[-2], self.unet_inplane[1]):
-            x = [tf.compat.v1.image.resize(images, size=self.unet_inplane, method=tf.image.ResizeMethod.BILINEAR,
-                                           align_corners=True, name='resize') for images in x]
-        x = [self.unet(img) for img in x]
+        #if not tf.equal(tf.shape(x)[-3], self.unet_inplane[0]) and tf.equal(tf.shape(x)[-2], self.unet_inplane[1]):
+
+        """ta = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+        for i in range(len(x)):
+            img_resized = tf.compat.v1.image.resize(x[i],
+                                                    size=self.unet_inplane,
+                                                    method=tf.image.ResizeMethod.BILINEAR,
+                                                    align_corners=True, name='resize')
+            ta.write(i, self.unet(img_resized))
+        ta = ta.stack()
+        x = tf.transpose(ta, [1,0,2,3,4])"""
+
+        x = tf.unstack(x, axis=1)
+        if self.resize:
+            x = [self.unet(
+                tf.compat.v1.image.resize(
+                    images,
+                    size=self.unet_inplane,
+                    method=tf.image.ResizeMethod.BILINEAR,
+                    align_corners=True,
+                    name='resize')) for images in x]
+        else:
+            x = [self.unet(img) for img in x]
+
         x = tf.stack(x, axis=1)
         return x
 

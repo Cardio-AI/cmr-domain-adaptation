@@ -5,6 +5,7 @@
 # external requirements
 --extra-index-url https://test.pypi.org/simple/projectroot
 ProjectRoot
+# wenn das nicht klappt: pip install --index-url https://test.pypi.org/simple/ ProjectRoot
 
 # standard libs
 numpy==1.18.0

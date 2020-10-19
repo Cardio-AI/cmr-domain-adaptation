@@ -122,7 +122,7 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
 
     for tick,label in zip(range(len(ax3.get_xticklabels())),ax3.get_xticklabels()):
         _ = ax3.text(tick, medians[tick], nobs[tick],horizontalalignment='center', size='x-small', color='black', weight='semibold')
-    plt.setp(ax3, ylim=(0,500))
+    #plt.setp(ax3, ylim=(0,500))
     plt.setp(ax3, ylabel=('Vol size in ml'))
     plt.setp(ax3, xlabel='')
     ax3.set_xticklabels(['LV','MYO', 'RV'])

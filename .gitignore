@@ -13,6 +13,7 @@ venv/
 *.tiff
 *.tif
 *.dcm
+data/predicted/
 
 models/
 
