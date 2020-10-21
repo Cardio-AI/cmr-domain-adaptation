@@ -23,7 +23,7 @@ def max_volume_loss(min_probabillity=0.8,):
         :return:
         """
 
-        y_pred = y_pred[...,1:] # ignore background, we want to maximize the number of captured ventricle voxel
+        y_pred = y_pred[...,1:] # ignore background, we want to maximize the number of captured foreground voxel
         y_pred = tf.cast(y_pred, dtype=tf.float32)
 
         sum_bigger_than = tf.reduce_max(y_pred, axis=-1)

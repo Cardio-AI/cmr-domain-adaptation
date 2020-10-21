@@ -124,13 +124,20 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         depth = config.get('DEPTH', 4)
         dense_weights = config.get('DENSE_WEIGHTS', 256)
         indexing = config.get('INDEXING', 'ij')
-        ax_weight = config.get('AX_WEIGHT', 2)
-        sax_weight = config.get('SAX_WEIGHT', 2)
-        prob_weight = config.get('PROB_WEIGHT', 1)
-        min_unet_probability = config.get('MIN_UNET_PROBABILITY', 0.9) # sum the foreground voxels with a prob higher than
-        use_mask2ax_prob = config.get('USE_SAX2AX_PROB', True) # otherwise use the SAX probability
+
         weight_mse_inplane = config.get('WEIGHT_MSE_INPLANE', True) # weight the MSE loss pixels in the center have greater weights
         mask_smaller_than_threshold = config.get('MASK_SMALLER_THAN_THRESHOLD', 0.01) # calc the MSe loss only where our image has values greater than
+        ax_weight = config.get('AX_LOSS_WEIGHT', 2)
+        
+        cycle_loss = config.get('CYCLE_LOSS', False)
+        sax_weight = config.get('SAX_LOSS_WEIGHT', 2)
+
+        focus_loss = config.get('FOCUS_LOSS', False)
+        focus_weight = config.get('FOCUS_LOSS_WEIGHT', 1)
+        min_unet_probability = config.get('MIN_UNET_PROBABILITY', 0.9) # sum the foreground voxels with a prob higher than
+        use_mask2ax_prob = config.get('USE_SAX2AX_PROB', True) # otherwise use the SAX probability
+
+
 
 
         # increase the dropout through the layer depth
@@ -178,31 +185,44 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             # Define the model output
             outputs = [ax2sax, sax2ax, ax2sax_mod, mask_prob, mask2ax, m, m_mod]
 
-            # Use the SAX predictions or the SAX2AX predictions to maximise the unet probability
-            if use_mask2ax_prob:
-                probability_object = 'mask2ax'
-            else:
-                probability_object = 'mask_prob'
+            # baseline loss
+            losses = {'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2])}
+            loss_w = {'ax2sax': ax_weight}
 
-            # Define the loss functions
-            losses = {
-                'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2]),
-                'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2]),
-                probability_object: metr.max_volume_loss(min_probabillity=min_unet_probability)
-            }
+            # extend losses by cycle MSE loss
+            if cycle_loss:
+                losses['sax2ax'] = metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2])
+                loss_w['sax2ax'] = sax_weight
 
-            # Define the loss weighting
-            loss_w = {
-                'ax2sax': ax_weight,
-                'sax2ax': sax_weight,
-                probability_object: prob_weight
-            }
+            # extend losses by probability loss
+            if focus_loss:
+
+                # Use the SAX predictions or the SAX2AX predictions to maximise the unet probability
+                # probability_object must fit a output-layer name
+                if use_mask2ax_prob:
+                    probability_object = 'mask2ax'
+                else:
+                    probability_object = 'mask_prob'
+
+                losses[probability_object] = metr.max_volume_loss(min_probabillity=min_unet_probability)
+                loss_w[probability_object] = focus_weight
+
+
         else: # no u-net given
             outputs = [ax2sax, sax2ax, m]
-            losses = {'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2]),
-                      'sax2ax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2])}
-            loss_w = {'ax2sax': ax_weight,
-                      'sax2ax': sax_weight}
+            # baseline loss
+            losses = {'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold,
+                                                         weight_inplane=weight_mse_inplane,
+                                                         xy_shape=input_shape[-2])}
+            loss_w = {'ax2sax': ax_weight}
+
+            # extend losses by cycle MSE loss
+            if cycle_loss:
+                losses['sax2ax'] = metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold,
+                                                            weight_inplane=weight_mse_inplane,
+                                                            xy_shape=input_shape[-2])
+                loss_w['sax2ax'] = sax_weight
+
 
         model = Model(inputs=[inputs_ax, inputs_sax], outputs=outputs, name=networkname)
         model.compile(optimizer=get_optimizer(config, networkname), loss=losses, loss_weights=loss_w)

@@ -657,7 +657,7 @@ def crop_center_3d(img, cropz, cropx, cropy):
         return img[:cropz, starty:starty + cropy, startx:startx + cropx]
 
 
-def center_crop_or_resize_2d_or_3d(img_nda, mask_nda, dim):
+def center_crop_or_pad_2d_or_3d(img_nda, mask_nda, dim):
     """
 
     :param img:
@@ -687,7 +687,7 @@ def center_crop_or_resize_2d_or_3d(img_nda, mask_nda, dim):
 
     if img_nda.ndim is 2:
         # TODO: implement crop or pad for 2D
-        crop = center_crop_or_resize_2d
+        crop = center_crop_or_pad_2d
 
     elif img_nda.ndim is 3:
         crop = center_crop_or_pad_3d

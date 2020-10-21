@@ -15,7 +15,7 @@ from time import time
 
 from src.visualization.Visualize import plot_3d_vol, show_slice, show_slice_transparent, plot_4d_vol, show_2D_or_3D
 from src.data.Preprocess import resample_3D, crop_to_square_2d, center_crop_or_resize_2d, \
-    clip_quantile, normalise_image, grid_dissortion_2D_or_3D, crop_to_square_2d_or_3d, center_crop_or_resize_2d_or_3d, \
+    clip_quantile, normalise_image, grid_dissortion_2D_or_3D, crop_to_square_2d_or_3d, center_crop_or_pad_2d_or_3d, \
     transform_to_binary_mask, load_masked_img, random_rotate_2D_or_3D, random_rotate90_2D_or_3D, \
     elastic_transoform_2D_or_3D, augmentation_compose_2D_or3D
 from src.data.Dataset import describe_sitk, get_t_position_from_filename, get_z_position_from_filename, \
@@ -389,7 +389,7 @@ class DataGenerator(BaseGenerator):
             self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'augmented')
             t1 = time()
 
-        img_nda, mask_nda, resized_by = center_crop_or_resize_2d_or_3d(img_nda, mask_nda, self.DIM)
+        img_nda, mask_nda, resized_by = center_crop_or_pad_2d_or_3d(img_nda, mask_nda, self.DIM)
 
         # transform the labels to binary channel masks
         # if masks are given, otherwise keep image as it is (for vae models, masks == False)
@@ -926,8 +926,8 @@ class CycleMotionDataGenerator(DataGenerator):
             self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'augmented')
             t1 = time()
 
-        img_nda, mask_nda, resized_by = center_crop_or_resize_2d_or_3d(img_nda, mask_nda, self.DIM)
-        sax3d, saxtoax3d, resized_by = center_crop_or_resize_2d_or_3d(sax3d, saxtoax3d, self.DIM)
+        img_nda, mask_nda, resized_by = center_crop_or_pad_2d_or_3d(img_nda, mask_nda, self.DIM)
+        sax3d, saxtoax3d, resized_by = center_crop_or_pad_2d_or_3d(sax3d, saxtoax3d, self.DIM)
 
         # transform the labels to binary channel masks
         # if masks are given, otherwise keep image as it is (for vae models, masks == False)
