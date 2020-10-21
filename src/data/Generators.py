@@ -259,7 +259,7 @@ class DataGenerator(BaseGenerator):
         # load image
         sitk_img = load_masked_img(sitk_img_f=self.images[ID], mask=self.MASKING_IMAGE,
                                    masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
-        # load mask
+        # load mask/ax2sax
         sitk_msk = load_masked_img(sitk_img_f=self.labels[ID], mask=self.MASKING_IMAGE,
                                    masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD, mask_labels=self.MASK_VALUES)
 
@@ -267,8 +267,8 @@ class DataGenerator(BaseGenerator):
         t1 = time()
 
         # crop to square before resample to avoid cropping the lower part of the image if not already square
-        sitk_img, sitk_msk = crop_to_square_2d_or_3d(sitk_img, sitk_msk)
-        self.__plot_state_if_debug__(sitk_img, sitk_msk, t1, 'cropped')
+        #sitk_img, sitk_msk = crop_to_square_2d_or_3d(sitk_img, sitk_msk)
+        #self.__plot_state_if_debug__(sitk_img, sitk_msk, t1, 'cropped')
 
         if self.RESAMPLE:
 
@@ -365,11 +365,9 @@ class DataGenerator(BaseGenerator):
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
         t1 = time()
 
-        img_nda = clip_quantile(img_nda, .9999)
         img_nda = normalise_image(img_nda, normaliser=self.SCALER)
 
         if not self.MASKS: # yields the image two times for an autoencoder
-            mask_nda = clip_quantile(mask_nda, .999)
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
 
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'clipped and {} normalized image:'.format(self.SCALER))
@@ -390,6 +388,14 @@ class DataGenerator(BaseGenerator):
             t1 = time()
 
         img_nda, mask_nda, resized_by = center_crop_or_pad_2d_or_3d(img_nda, mask_nda, self.DIM)
+
+        img_nda = clip_quantile(img_nda, .9999)
+        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
+
+        if not self.MASKS:  # yields two images
+            mask_nda = clip_quantile(mask_nda, .999)
+            mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
+
 
         # transform the labels to binary channel masks
         # if masks are given, otherwise keep image as it is (for vae models, masks == False)
@@ -750,8 +756,8 @@ class CycleMotionDataGenerator(DataGenerator):
         t1 = time()
 
         # crop to square before resample to avoid cropping the lower part of the image if not already square
-        sitk_img, sitk_msk = crop_to_square_2d_or_3d(sitk_img, sitk_msk)
-        sax3d, saxtoax3d = crop_to_square_2d_or_3d(sax3d, saxtoax3d)
+        #sitk_img, sitk_msk = crop_to_square_2d_or_3d(sitk_img, sitk_msk)
+        #sax3d, saxtoax3d = crop_to_square_2d_or_3d(sax3d, saxtoax3d)
         self.__plot_state_if_debug__(sitk_img, sitk_msk, t1, 'cropped')
 
         if self.RESAMPLE:
@@ -815,7 +821,7 @@ class CycleMotionDataGenerator(DataGenerator):
             logging.debug('dimension: {}'.format(sitk_img.GetDimension()))
             logging.debug('Size before resample: {}'.format(sitk_img.GetSize()))
 
-            # resample the image to given spacing and size
+            # resample the image to given spacing increase/decrease the size according to new spacing
             sitk_img = resample_3D(sitk_img=sitk_img, size=new_size_img, spacing=list(reversed(self.SPACING)),
                                    interpolate=sitk.sitkLinear)
 
@@ -892,6 +898,31 @@ class CycleMotionDataGenerator(DataGenerator):
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
         t1 = time()
 
+        self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'clipped and {} normalized image:'.format(self.SCALER))
+
+        if self.AUGMENT_GRID:  # augment with grid transform from albumenation
+            # apply grid augmentation,
+            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
+            raise NotImplementedError
+            #img_nda, mask_nda = grid_dissortion_2D_or_3D(img_nda, mask_nda, probabillity=0.8)
+            # img_nda, mask_nda = elastic_transoform_2D_or_3D(img_nda, mask_nda, probabillity=0.5)
+
+            #self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'grid_augmented')
+            #t1 = time()
+
+        if self.AUGMENT:  # augment data with albumentation
+            # use albumentation to apply random rotation scaling and shifts
+            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
+            raise NotImplementedError
+            #img_nda, mask_nda = augmentation_compose_2D_or3D(img_nda, mask_nda, target_dim=self.DIM,
+            #                                                 probabillity=0.8)
+            #self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'augmented')
+            #t1 = time()
+
+        img_nda, mask_nda, resized_by = center_crop_or_pad_2d_or_3d(img_nda, mask_nda, self.DIM)
+        sax3d, saxtoax3d, resized_by = center_crop_or_pad_2d_or_3d(sax3d, saxtoax3d, self.DIM)
+
+        # clipping and normalise after cropping
         img_nda = clip_quantile(img_nda, .999)
         img_nda = normalise_image(img_nda, normaliser=self.SCALER)
 
@@ -901,33 +932,9 @@ class CycleMotionDataGenerator(DataGenerator):
         saxtoax3d = clip_quantile(saxtoax3d, .999)
         saxtoax3d = normalise_image(saxtoax3d, normaliser=self.SCALER)
 
-        if not self.MASKS:  # yields the image two times for an autoencoder
+        if not self.MASKS:  # mask is an image
             mask_nda = clip_quantile(mask_nda, .999)
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
-
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'clipped and {} normalized image:'.format(self.SCALER))
-
-        if self.AUGMENT_GRID:  # augment with grid transform from albumenation
-            # apply grid augmentation,
-            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
-            raise NotImplementedError
-            img_nda, mask_nda = grid_dissortion_2D_or_3D(img_nda, mask_nda, probabillity=0.8)
-            # img_nda, mask_nda = elastic_transoform_2D_or_3D(img_nda, mask_nda, probabillity=0.5)
-
-            self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'grid_augmented')
-            t1 = time()
-
-        if self.AUGMENT:  # augment data with albumentation
-            # use albumentation to apply random rotation scaling and shifts
-            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
-            raise NotImplementedError
-            img_nda, mask_nda = augmentation_compose_2D_or3D(img_nda, mask_nda, target_dim=self.DIM,
-                                                             probabillity=0.8)
-            self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'augmented')
-            t1 = time()
-
-        img_nda, mask_nda, resized_by = center_crop_or_pad_2d_or_3d(img_nda, mask_nda, self.DIM)
-        sax3d, saxtoax3d, resized_by = center_crop_or_pad_2d_or_3d(sax3d, saxtoax3d, self.DIM)
 
         # transform the labels to binary channel masks
         # if masks are given, otherwise keep image as it is (for vae models, masks == False)

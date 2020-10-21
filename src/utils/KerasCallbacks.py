@@ -105,7 +105,7 @@ def get_callbacks(config={}, batch_generator=None, validation_generator=None, me
     )
     else: # no metrics given, use early stopping callback to stop the training after 20 epochs
         callbacks.append(
-            EarlyStopping(patience=10,
+            EarlyStopping(patience=config.get('MODEL_PATIENCE', 10),
                           verbose=1,
                           monitor=config.get('MONITOR_FUNCTION', 'loss'),
                           mode=config.get('MONITOR_MODE', 'min'))

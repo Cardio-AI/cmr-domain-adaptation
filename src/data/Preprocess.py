@@ -648,7 +648,7 @@ def crop_center_3d(img, cropz, cropx, cropy):
     """
     z, y, x = img.shape # get size of the last three axis
     logging.debug('image shape at the beginning of crop_center: {}\n cropx : {}'.format(img.shape, cropx))
-    if cropx >= x: # if x and y (square shape at this point) are smaller than the desired x,y dont crop
+    if cropx >= x and cropy >= y: # if x and y (square shape at this point) are smaller than the desired x,y dont crop
         logging.debug('Just crop z')
         return img[:cropz, ...] # crop only z
     else:
@@ -765,20 +765,9 @@ def center_crop_or_pad_3d(img_nda, mask_nda, dim):
     :return:
     """
     resized_by = 'no pad'
-    # center crop in z
-    # center crop slice by slice to given size, check if bigger or smaller
-    # nda is already in inplane square resolution, need to check only x
-    if (img_nda.shape[2] > dim[2] or img_nda.shape[0] > dim[0]):  # if first nda bigger than wished output, crop
-        resized_by = 'center crop'
-        img_nda = crop_center_3d(img_nda, dim[0], dim[1], dim[2])
-
-    if (mask_nda.shape[2] > dim[2] or mask_nda.shape[0] > dim[0]):  # if second nda bigger than wished output, crop
-        resized_by = 'center crop'
-        mask_nda = crop_center_3d(mask_nda, dim[0], dim[1], dim[2])
-
+    # first pad, than crop
     if img_nda.shape[2] < dim[2] or img_nda.shape[1] < dim[1]:  # sometimes we have a volume which should be cropped along z but padded along x and y
         resized_by = 'zero pad'
-        logging.debug('image too small, need to resize slice wise')
         logging.debug('image size: {}'.format(img_nda.shape))
         # pad
         imgs = []
@@ -802,6 +791,20 @@ def center_crop_or_pad_3d(img_nda, mask_nda, dim):
             res = aug(**data)
             masks.append(res['image'])
         mask_nda = np.stack(masks, axis=0)
+
+
+    # center crop in z
+    # center crop slice by slice to given size, check if bigger or smaller
+    # nda is already in inplane square resolution, need to check only x
+    if (img_nda.shape[2] > dim[2] or img_nda.shape[1] > dim[1] or img_nda.shape[0] > dim[0]):  # if first nda bigger than wished output, crop
+        resized_by = 'center crop'
+        img_nda = crop_center_3d(img_nda, dim[0], dim[1], dim[2])
+
+    if (mask_nda.shape[2] > dim[2] or mask_nda.shape[1] > dim[1] or mask_nda.shape[0] > dim[0]):  # if second nda bigger than wished output, crop
+        resized_by = 'center crop'
+        mask_nda = crop_center_3d(mask_nda, dim[0], dim[1], dim[2])
+
+
 
     return img_nda, mask_nda, resized_by
 
