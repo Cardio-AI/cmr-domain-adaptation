@@ -128,7 +128,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         weight_mse_inplane = config.get('WEIGHT_MSE_INPLANE', True) # weight the MSE loss pixels in the center have greater weights
         mask_smaller_than_threshold = config.get('MASK_SMALLER_THAN_THRESHOLD', 0.01) # calc the MSe loss only where our image has values greater than
         ax_weight = config.get('AX_LOSS_WEIGHT', 2)
-        
+
         cycle_loss = config.get('CYCLE_LOSS', False)
         sax_weight = config.get('SAX_LOSS_WEIGHT', 2)
 
@@ -186,16 +186,20 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
             outputs = [ax2sax, sax2ax, ax2sax_mod, mask_prob, mask2ax, m, m_mod]
 
             # baseline loss
+            logging.info('adding ax2sax MSE loss with a weighting of {}'.format(ax_weight))
             losses = {'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2])}
             loss_w = {'ax2sax': ax_weight}
 
             # extend losses by cycle MSE loss
             if cycle_loss:
+                logging.info('adding cycle loss with a weighting of {}'.format(sax_weight))
                 losses['sax2ax'] = metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold, weight_inplane=weight_mse_inplane, xy_shape=input_shape[-2])
                 loss_w['sax2ax'] = sax_weight
 
             # extend losses by probability loss
             if focus_loss:
+
+
 
                 # Use the SAX predictions or the SAX2AX predictions to maximise the unet probability
                 # probability_object must fit a output-layer name
@@ -203,7 +207,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
                     probability_object = 'mask2ax'
                 else:
                     probability_object = 'mask_prob'
-
+                logging.info('adding focus loss on {} with a weighting of {}'.format(probability_object, focus_weight))
                 losses[probability_object] = metr.max_volume_loss(min_probabillity=min_unet_probability)
                 loss_w[probability_object] = focus_weight
 
@@ -211,6 +215,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         else: # no u-net given
             outputs = [ax2sax, sax2ax, m]
             # baseline loss
+            logging.info('adding ax2sax MSE loss with a weighting of {}'.format(ax_weight))
             losses = {'ax2sax': metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold,
                                                          weight_inplane=weight_mse_inplane,
                                                          xy_shape=input_shape[-2])}
@@ -218,6 +223,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
 
             # extend losses by cycle MSE loss
             if cycle_loss:
+                logging.info('adding cycle MSE loss with a weighting of {}'.format(sax_weight))
                 losses['sax2ax'] = metr.loss_with_zero_mask(mask_smaller_than=mask_smaller_than_threshold,
                                                             weight_inplane=weight_mse_inplane,
                                                             xy_shape=input_shape[-2])

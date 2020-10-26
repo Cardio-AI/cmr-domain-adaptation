@@ -220,7 +220,7 @@ def random_rotate90_2D_or_3D(img, mask, probabillity=0.8):
 
     return augmented['image'], augmented['mask']
 
-def augmentation_compose_2D_or3D(img, mask, target_dim, probabillity=1):
+def augmentation_compose_2D_or3D(img, mask, target_dim, probabillity=1, spatial_transforms=True):
     #logging.debug('random rotate for: {}'.format(img.shape))
     augmented = {'image': None, 'mask': None}
 
@@ -259,8 +259,10 @@ def augmentation_compose_2D_or3D(img, mask, target_dim, probabillity=1):
             data['{}{}'.format(mask_placeholder, z)] = mask[z, ...]
             targets['{}{}'.format(img_placeholder,z)] = 'image'
             targets['{}{}'.format(mask_placeholder, z)] = 'mask'
-
-    aug = _create_aug_compose(p=probabillity, pad=max(img.shape[-2:]), target_dim=target_dim, targets=targets)
+    if spatial_transforms:
+        aug = _create_aug_compose(p=probabillity, pad=max(img.shape[-2:]), target_dim=target_dim, targets=targets)
+    else:
+        aug = _create_aug_compose_only_brightness(p=probabillity, pad=max(img.shape[-2:]), target_dim=target_dim, targets=targets)
 
     augmented = aug(**data)
 
@@ -275,6 +277,27 @@ def augmentation_compose_2D_or3D(img, mask, target_dim, probabillity=1):
 
     return augmented['image'], augmented['mask']
 
+
+def _create_aug_compose_only_brightness(p=1, pad=256,target_dim=(256,256), targets={}):
+    return Compose([
+        # RandomRotate90(p=0.3),
+        #Flip(0.1),
+        #Transpose(p=0.1),
+        # ShiftScaleRotate(p=0.8, rotate_limit=0,shift_limit=0.025, scale_limit=0.1,value=0, border_mode=cv2.BORDER_CONSTANT),
+        # GridDistortion(p=0.8, value=0,border_mode=cv2.BORDER_CONSTANT),
+        #PadIfNeeded(min_height=pad, min_width=pad, border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0, p=1),
+        #CenterCrop(height=target_dim[0], width=target_dim[1], p=1),
+        # ToFloat(max_value=100,p=1),
+        # HueSaturationValue(p=1)
+        RandomBrightnessContrast(brightness_limit=0.05,contrast_limit=0.05,always_apply=True)
+        #RandomBrightness(limit=0.1,p=1),
+        # GaussNoise(mean=image.mean(),p=1)
+        # OneOf([
+        # OpticalDistortion(p=1),
+        # GridDistortion(p=0.1)
+        # ], p=1),
+    ], p=p,
+        additional_targets=targets)
 
 def _create_aug_compose(p=1, pad=256,target_dim=(256,256), targets={}):
     return Compose([

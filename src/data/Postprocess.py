@@ -2,7 +2,7 @@ import numpy as np
 from skimage import measure
 
 
-def clean_3d_prediction_3d_cc(pred):
+def clean_3d_prediction_3d_cc(pred, background=0):
     """
     Find the biggest connected component per label
     This is a debugging method, which will plot each step
@@ -27,7 +27,7 @@ def clean_3d_prediction_3d_cc(pred):
         # find all cc for this label
         # tensorflow operation is only in 2D
         # all_labels = tfa.image.connected_components(np.uint8(pred==val)).numpy()
-        all_labels = measure.label(np.uint8(pred == val), background=0)
+        all_labels = measure.label(np.uint8(pred == val), background=background)
 
         for c in np.unique(all_labels)[1:]:
             mask = all_labels == c

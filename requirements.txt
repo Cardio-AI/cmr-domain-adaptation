@@ -25,4 +25,5 @@ nibabel
 tqdm
 graphviz
 pydot
+xlwt
 

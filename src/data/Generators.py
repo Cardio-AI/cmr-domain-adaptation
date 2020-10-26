@@ -914,8 +914,8 @@ class CycleMotionDataGenerator(DataGenerator):
             # use albumentation to apply random rotation scaling and shifts
             # TODO: implement augmentation, remember params and apply to image1, image2 and image3
             raise NotImplementedError
-            #img_nda, mask_nda = augmentation_compose_2D_or3D(img_nda, mask_nda, target_dim=self.DIM,
-            #                                                 probabillity=0.8)
+            img_nda, mask_nda = augmentation_compose_2D_or3D(img_nda, mask_nda, target_dim=self.DIM,
+                                                             probabillity=0.8)
             #self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'augmented')
             #t1 = time()
 
