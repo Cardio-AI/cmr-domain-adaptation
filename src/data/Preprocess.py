@@ -788,25 +788,30 @@ def center_crop_or_pad_3d(img_nda, mask_nda, dim):
     :return:
     """
     resized_by = 'no pad'
+    temp = np.zeros(dim)
     # first pad, than crop
-    if img_nda.shape[2] < dim[2] or img_nda.shape[1] < dim[1]:  # sometimes we have a volume which should be cropped along z but padded along x and y
+    if img_nda.shape[2] < dim[2] or img_nda.shape[1] < dim[1] or img_nda.shape[0] < dim[0]:  # sometimes we have a volume which should be cropped along z but padded along x and y
         resized_by = 'zero pad'
         logging.debug('image size: {}'.format(img_nda.shape))
-        # pad
+        # pad inplane
         imgs = []
         aug = PadIfNeeded(p=1.0,min_height=dim[1],min_width=dim[2],border_mode=cv2.BORDER_CONSTANT, value=0)
         for img in img_nda:
             data ={'image':img}
             res = aug(**data)
             imgs.append(res['image'])
-        # pad along z
         img_nda = np.stack(imgs, axis=0)
-    if mask_nda.shape[2] < dim[2] or mask_nda.shape[1] < dim[1]:  # sometimes we have a volume which should be cropped along z but resized along x and y
+        # pad along z
+        if img_nda.shape[0] < dim[0]:
+            padding = int(np.ceil((dim[0] - img_nda.shape[0])/2))
+            img_nda = np.pad(img_nda,[(padding,padding),(0,0), (0,0)], 'constant')
+
+    if mask_nda.shape[2] < dim[2] or mask_nda.shape[1] < dim[1] or mask_nda.shape[0] < dim[0]:  # sometimes we have a volume which should be cropped along z but resized along x and y
         resized_by = 'zero pad'
         logging.debug('mask too small, need to resize slice wise')
         logging.debug('mask size: {}'.format(mask_nda.shape))
 
-        # pad
+        # pad inplane
         masks = []
         aug = PadIfNeeded(p=1.0,min_height=dim[1],min_width=dim[2],border_mode=cv2.BORDER_CONSTANT, value=0)
         for mask in mask_nda:
@@ -814,7 +819,10 @@ def center_crop_or_pad_3d(img_nda, mask_nda, dim):
             res = aug(**data)
             masks.append(res['image'])
         mask_nda = np.stack(masks, axis=0)
-
+        # pad along z
+        if mask_nda.shape[0] < dim[0]:
+            padding = int(np.ceil((dim[0] - mask_nda.shape[0])/2))
+            mask_nda = np.pad(mask_nda,[(padding,padding),(0,0), (0,0)], 'constant')
 
     # center crop in z
     # center crop slice by slice to given size, check if bigger or smaller
@@ -826,8 +834,6 @@ def center_crop_or_pad_3d(img_nda, mask_nda, dim):
     if (mask_nda.shape[2] > dim[2] or mask_nda.shape[1] > dim[1] or mask_nda.shape[0] > dim[0]):  # if second nda bigger than wished output, crop
         resized_by = 'center crop'
         mask_nda = crop_center_3d(mask_nda, dim[0], dim[1], dim[2])
-
-
 
     return img_nda, mask_nda, resized_by
 
@@ -867,15 +873,7 @@ def center_crop_or_resize_2d(img_nda, mask_nda, dim):
 
 def center_crop_or_pad_2d(img_nda, mask_nda, dim):
     """
-    center crop to given size, check if bigger or smaller
-    requires square shape as input
-    skimage resize takes the order parameter which defines the interpolation
-        0: Nearest-neighbor
-        1: Bi-linear (default)
-        2: Bi-quadratic
-        3: Bi-cubic
-        4: Bi-quartic
-        5: Bi-quintic
+    pad and/or crop to given size
 
     :param img_nda:
     :param mask_nda:
@@ -883,27 +881,27 @@ def center_crop_or_pad_2d(img_nda, mask_nda, dim):
     :return:
     """
     resized_by = ''
-    # requires square shape
-    assert(dim[0] == dim[1]), 'shape is not square'
+    # first pad
     aug = PadIfNeeded(p=1.0, min_height=dim[0], min_width=dim[1], border_mode=cv2.BORDER_CONSTANT, value=0)
 
-    if img_nda.shape[0] > dim[0]:  # if nda is bigger than output shape, center crop, otherwise resize
-        resized_by += 'center crop'
-        img_nda = crop_center_2d(img_nda, dim[0], dim[1])
-    if mask_nda.shape[0] > dim[0]:
-        resized_by += 'center crop'
-        mask_nda = crop_center_2d(mask_nda, dim[0], dim[1])
-
-    if img_nda.shape[0] < dim[0]:
+    if img_nda.shape[0] < dim[0] or img_nda.shape[1] < dim[1]:
         resized_by += 'zero pad'
         data = {'image': img_nda}
         res = aug(**data)
         img_nda = res['image']
-    if mask_nda.shape[0] < dim[0]:
+    if mask_nda.shape[0] < dim[0] or mask_nda.shape[1] < dim[1]:
         resized_by += 'zero pad'
         data = {'image': mask_nda}
         res = aug(**data)
         mask_nda = res['image']
+
+    # than crop
+    if img_nda.shape[0] > dim[0] or img_nda.shape[1] > dim[1]:
+        resized_by += 'center crop'
+        img_nda = crop_center_2d(img_nda, dim[0], dim[1])
+    if mask_nda.shape[0] > dim[0] or mask_nda.shape[1] > dim[1]:
+        resized_by += 'center crop'
+        mask_nda = crop_center_2d(mask_nda, dim[0], dim[1])
 
     return img_nda, mask_nda, resized_by
 

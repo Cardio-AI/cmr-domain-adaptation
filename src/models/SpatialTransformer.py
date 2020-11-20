@@ -198,9 +198,6 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
 
             # extend losses by probability loss
             if focus_loss:
-
-
-
                 # Use the SAX predictions or the SAX2AX predictions to maximise the unet probability
                 # probability_object must fit a output-layer name
                 if use_mask2ax_prob:

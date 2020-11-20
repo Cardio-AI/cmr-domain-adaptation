@@ -296,7 +296,7 @@ class DataGenerator(BaseGenerator):
                 z_s_img = np.ceil((old_size_img[0] * old_spacing_img[0])) / self.SPACING[0]
                 # not necessary if x and y have the same shape
                 #z_s = self.DIM[0] #fill z with zeros slices or cut
-                z_s_img = max(self.DIM[0], z_s_img) # z must fit in the network input, resample with spacing or min network input
+                #z_s_img = max(self.DIM[0], z_s_img) # z must fit in the network input, resample with spacing or min network input
                 new_size_img = (int(x_s_img), int(y_s_img), int(z_s_img))
 
                 x_s_msk = np.ceil((old_size_msk[2] * old_spacing_msk[2])) / self.SPACING[2]
@@ -304,7 +304,7 @@ class DataGenerator(BaseGenerator):
                 z_s_msk = np.ceil((old_size_msk[0] * old_spacing_msk[0])) / self.SPACING[0]
                 # not necessary if x and y have the same shape
                 #z_s = self.DIM[0] #fill z with zeros slices or cut
-                z_s_msk = max(self.DIM[0], z_s_msk) # z must fit in the network input, resample with spacing or min network input
+                #z_s_msk = max(self.DIM[0], z_s_msk) # z must fit in the network input, resample with spacing or min network input
                 new_size_msk = (int(x_s_msk), int(y_s_msk), int(z_s_msk))
 
                 # we can also resize with the resamplefilter from sitk
@@ -791,25 +791,25 @@ class CycleMotionDataGenerator(DataGenerator):
                 x_s_img = np.ceil((old_size_img[2] * old_spacing_img[2])) / self.SPACING[2]
                 y_s_img = np.ceil((old_size_img[1] * old_spacing_img[1])) / self.SPACING[1]
                 z_s_img = np.ceil((old_size_img[0] * old_spacing_img[0])) / self.SPACING[0]
-                z_s_img = max(self.DIM[0],z_s_img)  # z must fit in the network input, resample with spacing or min network input
+                #z_s_img = max(self.DIM[0],z_s_img)  # z must fit in the network input, resample with spacing or min network input
                 new_size_img = (int(x_s_img), int(y_s_img), int(z_s_img))
 
                 x_s_msk = np.ceil((old_size_msk[2] * old_spacing_msk[2])) / self.SPACING[2]
                 y_s_msk = np.ceil((old_size_msk[1] * old_spacing_msk[1])) / self.SPACING[1]
                 z_s_msk = np.ceil((old_size_msk[0] * old_spacing_msk[0])) / self.SPACING[0]
-                z_s_msk = max(self.DIM[0],z_s_msk)  # z must fit in the network input, resample with spacing or min network input
+                #z_s_msk = max(self.DIM[0],z_s_msk)  # z must fit in the network input, resample with spacing or min network input
                 new_size_msk = (int(x_s_msk), int(y_s_msk), int(z_s_msk))
 
                 x_s_sax3d = np.ceil((old_size_sax3d[2] * old_spacing_sax3d[2])) / self.SPACING[2]
                 y_s_sax3d = np.ceil((old_size_sax3d[1] * old_spacing_sax3d[1])) / self.SPACING[1]
                 z_s_sax3d = np.ceil((old_size_sax3d[0] * old_spacing_sax3d[0])) / self.SPACING[0]
-                z_s_sax3d = max(self.DIM[0],z_s_sax3d)  # z must fit in the network input, resample with spacing or min network input
+                #z_s_sax3d = max(self.DIM[0],z_s_sax3d)  # z must fit in the network input, resample with spacing or min network input
                 new_size_sax3d = (int(x_s_sax3d), int(y_s_sax3d), int(z_s_sax3d))
 
                 x_s_saxtoax3d = np.ceil((old_size_saxtoax3d[2] * old_spacing_saxtoax3d[2])) / self.SPACING[2]
                 y_s_saxtoax3d = np.ceil((old_size_saxtoax3d[1] * old_spacing_saxtoax3d[1])) / self.SPACING[1]
                 z_s_saxtoax3d = np.ceil((old_size_saxtoax3d[0] * old_spacing_saxtoax3d[0])) / self.SPACING[0]
-                z_s_saxtoax3d = max(self.DIM[0],z_s_saxtoax3d)  # z must fit in the network input, resample with spacing or min network input
+                #z_s_saxtoax3d = max(self.DIM[0],z_s_saxtoax3d)  # z must fit in the network input, resample with spacing or min network input
                 new_size_saxtoax3d = (int(x_s_saxtoax3d), int(y_s_saxtoax3d), int(z_s_saxtoax3d))
 
                 # we can also resize with the resamplefilter from sitk

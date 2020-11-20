@@ -138,6 +138,7 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
             logging.debug('spatial data_copied: {:0.3f}s'.format(time() - t1))
 
             if override_spacing:
+                new_image.SetDirection()
                 new_image.SetSpacing(override_spacing)
 
         if full_filename != None:
@@ -189,6 +190,34 @@ def create_4d_volumes_from_4d_files(img_f, mask_f, full_path='data/raw/GCN/3D/',
     copy_meta_and_save(mask_4d_nda, img_4d_sitk, os.path.join(full_path, mask_file))
 
     return [masked_t, list(img_4d_nda.shape)]
+
+
+def extract_spacing(matlabfile=None, is_sax=True):
+    """
+    extract the spacing from a medvisio export matlabfile
+    of a CMR image, either SAX or 4CH
+    returns (1,1,1,6) for (z,t,x,y) if none spacing could be found
+    :param matlabfile (np.ndarray) matlabfile opened via scipy.io.loadmat(example.mat)
+    :param is_sax (bool) toggle between sax or 4ch spacing
+    :return: (tuple) spacing in the following order (z,t,x,y)
+    """
+
+    assert (matlabfile is not None), 'no matlab file given, please provide *.mat file as np.ndarray'
+
+    try:
+        values = dict([(keys.lower(), value) for keys, value in
+                       zip(matlabfile['setstruct'][0].dtype.names, matlabfile['setstruct'][0][int(is_sax)])])
+
+    except Exception as e:
+        print(str(e))
+        values = dict()
+
+    spacing_x = float(values.get('resolutionx', 1))
+    spacing_y = float(values.get('resolutiony', 1))
+    spacing_t = float(1)
+    spacing_z = float(values.get('slicethickness', 6))
+
+    return (spacing_z, spacing_t, spacing_x, spacing_y)
 
 
 def create_3d_volumes_from_4d_files(img_f, mask_f, full_path='data/raw/tetra/3D/', slice_treshhold=2):
@@ -393,6 +422,7 @@ def get_trainings_files(data_path, fold=0, path_to_folds_df='data/raw/gcn_05_202
     img_suffix = '*img.nrrd'
     mask_suffix = '*msk.nrrd'
 
+    # load the nrrd files with given pattern from the data path
     x = sorted(glob.glob(os.path.join(data_path, img_suffix)))
     y = sorted(glob.glob(os.path.join(data_path, mask_suffix)))
     if len(x) ==0:
@@ -401,8 +431,9 @@ def get_trainings_files(data_path, fold=0, path_to_folds_df='data/raw/gcn_05_202
 
     df = pd.read_csv(path_to_folds_df)
     patients = df[df.fold.isin([fold])]
-    patients_train = patients[patients['modality'] == 'train']['patient'].values
-    patients_test = patients[patients['modality'] == 'test']['patient'].values
+    # make sure we count each patient only once
+    patients_train = patients[patients['modality'] == 'train']['patient'].unique()
+    patients_test = patients[patients['modality'] == 'test']['patient'].unique()
     logging.info('Found {} images/masks in {}'.format(len(x), data_path))
     logging.info('Patients train: {}'.format(len(patients_train)))
 

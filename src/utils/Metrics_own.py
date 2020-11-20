@@ -22,8 +22,8 @@ def max_volume_loss(min_probabillity=0.8,):
         :param weights:
         :return:
         """
-
-        y_pred = y_pred[...,1:] # ignore background, we want to maximize the number of captured foreground voxel
+        if y_pred.shape[-1] == 4:
+            y_pred = y_pred[...,1:] # ignore background, we want to maximize the number of captured foreground voxel
         y_pred = tf.cast(y_pred, dtype=tf.float32)
 
         sum_bigger_than = tf.reduce_max(y_pred, axis=-1)
@@ -78,6 +78,8 @@ def loss_with_zero_mask(loss=mse, mask_smaller_than=0.01, weight_inplane=False,x
         y_pred = tf.cast(y_pred, dtype=tf.float32)
         y_true = tf.cast(y_true, dtype=tf.float32)
         mask = tf.squeeze(tf.cast((y_true > mask_smaller_than),tf.float32),axis=-1)
+        # scale the loss as we mask the loss it will be usually very small (<.>
+        mask = mask * 100
 
         if weight_inplane:
             return (loss(y_true, y_pred) * mask) * weights_inplane + K.epsilon()

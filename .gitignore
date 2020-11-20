@@ -1,6 +1,5 @@
 # pycharm files
 .idea
-venv/
 *.nrrd
 *.json
 *.pdf

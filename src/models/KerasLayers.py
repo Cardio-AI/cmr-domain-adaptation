@@ -165,7 +165,9 @@ class UnetWrapper(Layer):
         ta = ta.stack()
         x = tf.transpose(ta, [1,0,2,3,4])"""
 
+
         x = tf.unstack(x, axis=1)
+        input_size = x[0].shape[1:-1]
         if self.resize:
             x = [self.unet(
                 tf.compat.v1.image.resize(
@@ -174,6 +176,11 @@ class UnetWrapper(Layer):
                     method=tf.image.ResizeMethod.BILINEAR,
                     align_corners=True,
                     name='resize')) for images in x]
+            x = [tf.compat.v1.image.resize(img,
+                    size=input_size,
+                    method=tf.image.ResizeMethod.BILINEAR,
+                    align_corners=True,
+                    name='reverse-resize') for img in x]
         else:
             x = [self.unet(img) for img in x]
 

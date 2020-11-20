@@ -17,7 +17,7 @@ from src.data.Generators import get_samples
 from src.data.Preprocess import normalise_image
 
 
-def get_callbacks(config={}, batch_generator=None, validation_generator=None, metrics=None):
+def get_callbacks(config={}, batch_generator=None, metrics=None):
     """
     :param config:
     :param validation_generator:
@@ -29,16 +29,16 @@ def get_callbacks(config={}, batch_generator=None, validation_generator=None, me
     ensure_dir(config['MODEL_PATH'])
 
     if batch_generator:
-        pass
-    """
-        callbacks.append(
-            CustomImageWritertf2(log_dir=config['TENSORBOARD_LOG_DIR'],
-                                 image_freq=config.get('EPOCHS_BETWEEN_CHECKPOINTS', 2),
-                                 feed_inputs_4_display=feed_inputs_4_tensorboard(config, batch_generator,
-                                                                                 validation_generator),
-                                 flow=config.get('FLOW', False)))
 
-    """
+        callbacks.append(
+            Ax2SaxWriter(log_dir=config['TENSORBOARD_LOG_DIR'],
+                         image_freq=1,
+                         val_gen=batch_generator,
+                         flow=False,
+                         dpi=200,
+                         f_size=[12,4]))
+
+
     """callbacks.append(
         WeightsSaver(config.get('MODEL_PATH', 'temp/models'),
                      model_freq=2))"""
@@ -408,7 +408,7 @@ class CustomImageWritertf2(Callback):
     # original code from:
     # https://stackoverflow.com/questions/43784921/how-to-display-custom-images-in-tensorboard-using-keras?rq=1
 
-    def __init__(self, log_dir='./logs/tmp/', image_freq=10, feed_inputs_4_display=None, flow=False):
+    def __init__(self, log_dir='./logs/tmp/', image_freq=10, feed_inputs_4_display=None, flow=False, dpi=200,f_size=(5,5), interpol='bilinear'):
 
         """
         This callback gets a dict with key: x,y entries
@@ -424,6 +424,9 @@ class CustomImageWritertf2(Callback):
         super(CustomImageWritertf2, self).__init__()
         self.freq = image_freq
         self.flow = flow
+        self.f_size = f_size
+        self.dpi = dpi
+        self.interpol = interpol
         self.e = 0
         self.n_start_epochs = 20
         self.feed_inputs_4_display = feed_inputs_4_display
@@ -543,6 +546,137 @@ class CustomImageWritertf2(Callback):
             # del xs, ys, pred
 
             # self.writer.add_summary(tf.Summary(value=summary_str), global_step=self.e)
+
+
+class Ax2SaxWriter(Callback):
+
+    # Keras Callback for training progress visualisation in the Tensorboard
+    # Creates a new summary file
+    # Usage:
+    # custom_image_writer = CustomImageWriter(experiment_path, 10, create_feeds_for_tensorboard(batch_generator, val_generator)
+    # model.fit_generator(batch_generator, val_generator, *args, callbacks=[custom_image_writer, ...]
+    # original code from:
+    # https://stackoverflow.com/questions/43784921/how-to-display-custom-images-in-tensorboard-using-keras?rq=1
+
+    def __init__(self, log_dir='./logs/tmp/', image_freq=10, val_gen=None, flow=False, dpi=200,f_size=(5,5), interpol='bilinear'):
+
+        """
+        This callback gets a dict with key: x,y entries
+        When the on_epoch_end callback is invoked this callback predicts the current output for all xs
+        Afterwards it writes the image, gt and prediction into a summary file to make the learning visually in the Tensorboard
+        :param log_dir: String, path - folder for the tensorboard summary file Imagewriter will create a subdir "images" for the imagesummary file
+        :param image_freq: int - run this callback every n epoch to save disk space and increase speed
+        :param feed_inputs_4_display: dict {'train':(x_tensor,y_tensor), 'val' : (x_tensor. y_tensor)}
+        x and ys to predict and visualise + key for summary description
+        x_tensor and y_tensor have the shape n, x, y, 1 or classes for y, they are grouped by a key, eg. 'train', 'val'
+        """
+
+        super(Ax2SaxWriter, self).__init__()
+        self.freq = image_freq
+        self.flow = flow
+        self.f_size = f_size
+        self.dpi = dpi
+        self.interpol = interpol
+        self.e = 0
+        self.n_start_epochs = 20
+        log_dir = os.path.join(log_dir, 'images')  # create a subdir for the imagewriter summary file
+        ensure_dir(log_dir)
+        self.writer = tensorflow.summary.create_file_writer(log_dir)
+        self.slice_by=3
+
+        input_, output_ = val_gen.__getitem__(0)
+        self.x = input_[0]
+        self.y = output_[0]
+        self.x2 = input_[1]
+        self.y2 = output_[1]
+
+    def custom_set_feed_input_to_display(self, feed_inputs_display):
+
+        """
+        sets the feeding data for TensorBoard visualization;
+        :param feed_inputs_display: dict {'train':(x_tensor,y_tensor), 'val' : (x_tensor. y_tensor)}
+        x and ys to predict and visualise + key for summary description
+        x_tensor and y_tensor have the shape n, x, y, 1 or classes for y, they are grouped by a key, eg. 'train', 'val'
+        :return: None
+        """
+
+        self.feed_inputs_display = feed_inputs_display
+
+    def make_image(self, figure):
+
+        """
+        Create a tf.Summary.Image from an ndarray
+        :param numpy_img: Greyscale image with shape (x, y, 1)
+        :return:
+        """
+        """Converts the matplotlib plot specified by 'figure' to a PNG image and
+          returns it. The supplied figure is closed and inaccessible after this call."""
+        # Save the plot to a PNG in memory.
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        # Closing the figure prevents it from being displayed directly inside
+        # the notebook.
+        plt.close(figure)
+        buf.seek(0)
+        # Convert PNG buffer to TF image
+        image = tensorflow.image.decode_png(buf.getvalue(), channels=4)
+        # Add the batch dimension
+        image = tensorflow.expand_dims(image, 0)
+        return image
+
+    def on_train_begin(self, logs=None):
+        # Call the image writer callback once before training
+        self.on_epoch_end(epoch=0,logs=logs)
+
+    def on_epoch_end(self, epoch, logs=None):
+
+        """
+        Keras will call this methods after each epoch on all Callbacks provided to the method fit or fit_generator
+        A callback has access to its associated model through the class property self.model.
+        :param epoch:
+        :param logs:
+        :return:
+        """
+
+        logs = logs or {}
+        self.e += 1
+        if self.e % self.freq == 0 or self.e < self.n_start_epochs:  # every n epoch (and the first 20 epochs), write pred in a TensorBorad summary file;
+            summary_str = []
+
+            # xs and ys have the shape n, x, y, 1, they are grouped by the key
+            # xs will have the shape: (len(keys), samples, z, x, y, 1)
+            # need to reshape with len(keys) x samples
+            pred, inv_pred, ax2sax_mod, prob, ax_msk,m, m_mod = self.model.predict(x = [self.x,self.x2])
+            from src.visualization.Visualize import show_2D_or_3D
+            # create one tensorboard entry per key in feed_inputs_display
+            pred_i = 0
+            with self.writer.as_default():
+                for x_, y_, p, ax2sax_msk in zip(self.x, self.y, ax2sax_mod, prob):
+                    # xs and ys have the shape n, x, y, 1, they are grouped by the key
+                    # count the samples provided by each key to sort them
+                    tensorflow.summary.image(name='plot/{}/_AX2SAX_pred'.format(pred_i),
+                                                         data=self.make_image(
+                                                             show_2D_or_3D(p[::self.slice_by], ax2sax_msk[::self.slice_by], save=False, dpi=self.dpi, f_size=self.f_size,interpol=self.interpol)),
+                                                         step=epoch)
+                    tensorflow.summary.image(name='plot/{}/_AX'.format(pred_i),
+                                             data=self.make_image(
+                                                 show_2D_or_3D(x_[::self.slice_by], save=False, dpi=self.dpi, f_size=self.f_size,interpol=self.interpol)),
+                                             step=epoch)
+                    tensorflow.summary.image(name='plot/{}/_AX2SAX_gt'.format(pred_i),
+                                             data=self.make_image(
+                                                 show_2D_or_3D(y_[::self.slice_by], save=False, dpi=self.dpi, f_size=self.f_size,interpol=self.interpol)),
+                                             step=epoch)
+
+                    """tensorflow.summary.image(name='plot/{}/{}/_ground_truth'.format(key, i),
+                                                         data=self.make_image(
+                                                             show_slice(img=x[i], mask=y[i], show=False)),
+                                                         step=0)"""
+                    pred_i+=1
+
+            # del xs, ys, pred
+
+            # self.writer.add_summary(tf.Summary(value=summary_str), global_step=self.e)
+
 
 
 class WeightsSaver(Callback):

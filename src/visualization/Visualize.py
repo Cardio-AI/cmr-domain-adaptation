@@ -36,7 +36,7 @@ def get_metadata_maybe(sitk_img, key, default='not_found'):
     return value
 
 
-def show_2D_or_3D(img=None, mask=None):
+def show_2D_or_3D(img=None, mask=None, save=False, file_name='reports/figure/temp.png',dpi=200,f_size=(5,5), interpol='bilinear'):
     """
     Debug wrapper for 2D or 3D image/mask vizualisation
     wrapper checks the ndim and calls shoow_transparent or plot 3d
@@ -68,11 +68,11 @@ def show_2D_or_3D(img=None, mask=None):
     elif dim == 3 and img.shape[-1] == 1:  # data from the batchgenerator
         return show_slice_transparent(img, mask)
     elif dim == 3:
-        return plot_3d_vol(img, mask)
+        return plot_3d_vol(img, mask, save=save, path=file_name,dpi=dpi,fig_size=f_size, interpol=interpol)
     elif dim == 4 and img.shape[-1] == 1:  # data from the batchgenerator
-        return plot_3d_vol(img, mask)
-    elif dim == 4 and img.shape[-1] ==4: # only mask
-        return plot_3d_vol(img, mask)
+        return plot_3d_vol(img, mask, save=save, path=file_name,dpi=dpi,fig_size=f_size, interpol=interpol)
+    elif dim == 4 and img.shape[-1] in [3,4]: # only mask
+        return plot_3d_vol(img, save=save, path=file_name,dpi=dpi,fig_size=f_size, interpol=interpol)
     elif dim == 4:
         return plot_4d_vol(img, mask)
     else:
@@ -99,7 +99,7 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 8), sharey=False)
 
     ax1 = sns.violinplot(x= 'variable',y = 'value', data=df_dice,order=["Dice LV", "Dice MYO", "Dice RV"],palette=my_pal_1 , showfliers = outliers, ax=ax1)
-    medians = df_dice.groupby(['variable'])['value'].median().round(2)
+    medians = df_dice.groupby(['variable'])['value'].mean().round(2)
     sd = df_dice.groupby(['variable'])['value'].std().round(2)
     nobs = ['{}+/-{}'.format(m,s) for m,s in zip(medians, sd)]
 
@@ -116,7 +116,7 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
     # create violin plot for the volume
     ax3 = sns.violinplot(x= 'variable',y = 'value',order=["Volume LV", "Volume MYO", "Volume RV"], palette=my_pal_3, showfliers = outliers, data=df_vol, ax=ax3)
 
-    medians = df_vol.groupby(['variable'])['value'].median().round(2)
+    medians = df_vol.groupby(['variable'])['value'].mean().round(2)
     sd = df_vol.groupby(['variable'])['value'].std().round(2)
     nobs = ['{}+/-{}'.format(m,s) for m,s in zip(medians, sd)]
 
@@ -130,7 +130,7 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
     ax4 = sns.violinplot(x='variable', y='value', order=["Hausdorff LV", "Hausdorff MYO", "Hausdorff RV"], palette=hd_pal,
                          showfliers=outliers, data=df_haus, ax=ax4)
 
-    medians = df_haus.groupby(['variable'])['value'].median().round(2)
+    medians = df_haus.groupby(['variable'])['value'].mean().round(2)
     sd = df_haus.groupby(['variable'])['value'].std().round(2)
     nobs = ['{}+/-{}'.format(m, s) for m, s in zip(medians, sd)]
 
@@ -141,10 +141,6 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
     plt.setp(ax4, ylabel=('Hausdorff distance'))
     plt.setp(ax4, xlabel='')
     ax4.set_xticklabels(['LV','MYO', 'RV'])
-
-
-
-
     plt.tight_layout()
     return fig
 
@@ -538,8 +534,8 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
         #fig.show()
 
 
-def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figures/tetra/3D_vol/temp/',
-                fig_size=[25, 8], show=True):
+def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figures/temp.png',
+                fig_size=[25, 8], dpi=200, interpol='nearest'):
     """
     plots a 3D nda, if a mask is given combine mask and image slices
     :param show:
@@ -569,8 +565,8 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
     else:
         logging.debug('timestep: {} - plotting'.format(timestep))
 
-    if img_3d.shape[-1] == 4: # this image is a mask
-        img_3d = img_3d[..., 1:]  # ignore background
+    if img_3d.shape[-1] in [3,4]: # this image is a mask
+        img_3d = img_3d[..., -3:]  # ignore background
         mask_3d = img_3d # handle this image as mask
         img_3d = np.zeros((mask_3d.shape[:-1]))
 
@@ -592,7 +588,7 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
     mask_3d = mask_3d[::slice_n]if mask_3d is not None else mask_3d
 
     # number of subplots = no of slices in z-direction
-    fig = plt.figure(figsize=fig_size)
+    fig = plt.figure(figsize=fig_size, dpi=dpi)
 
     for idx, slice in enumerate(img_3d):  # iterate over all slices
         ax = fig.add_subplot(1, img_3d.shape[0], idx + 1)
@@ -606,17 +602,15 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
         ax.set_xticks([])
         ax.set_yticks([])
         #real_index = idx + (idx * slice_n)
-        ax.set_title('z-axis: {}'.format(idx), color='r', fontsize=plt.rcParams['font.size'])
+        #ax.set_title('z-axis: {}'.format(idx), color='r', fontsize=plt.rcParams['font.size'])
 
 
     fig.subplots_adjust(wspace=0, hspace=0)
     if save:
         save_plot(fig, path, str(timestep), override=False)
 
-    if show:
-        #fig.show()
-        pass
     else:
+        return fig
         fig.canvas.draw()
         data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))

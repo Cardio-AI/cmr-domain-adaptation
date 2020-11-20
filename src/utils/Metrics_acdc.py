@@ -177,7 +177,8 @@ def metrics(img_gt, img_pred, voxel_size):
         try:
             hausdorff = hd(pred_c_i, gt_c_i)
         except Exception as e:
-            hausdorff = img_gt.shape[0]/4 # mark this hausdorff as a really huge error
+            hausdorff = np.NaN
+            #hausdorff = img_gt.shape[0]/4 # mark this hausdorff as a really huge error
             print(str(e))
         # Compute volume
         volpred = pred_c_i.sum() * np.prod(voxel_size) / 1000.
