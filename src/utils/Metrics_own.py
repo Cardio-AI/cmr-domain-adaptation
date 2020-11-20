@@ -61,7 +61,7 @@ def loss_with_zero_mask(loss=mse, mask_smaller_than=0.01, weight_inplane=False,x
     x_shape = xy_shape
     y_shape = xy_shape
     temp = np.zeros((x_shape, y_shape))
-    weights_distribution = np.linspace(0, 1, x_shape // 2)
+    weights_distribution = np.linspace(0, 100, x_shape // 2)
     for i, l in enumerate(weights_distribution):
         temp[i:-i, i:-i] = l
     weights = temp[None, None, :, :]
@@ -79,7 +79,7 @@ def loss_with_zero_mask(loss=mse, mask_smaller_than=0.01, weight_inplane=False,x
         y_true = tf.cast(y_true, dtype=tf.float32)
         mask = tf.squeeze(tf.cast((y_true > mask_smaller_than),tf.float32),axis=-1)
         # scale the loss as we mask the loss it will be usually very small (<.>
-        mask = mask * 100
+        #mask = mask * 100
 
         if weight_inplane:
             return (loss(y_true, y_pred) * mask) * weights_inplane + K.epsilon()
