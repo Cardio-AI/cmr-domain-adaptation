@@ -103,7 +103,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
     else:
         # distribute the training with the "mirrored data"-paradigm across multiple gpus if available, if not use gpu 0
         strategy = tf.distribute.MirroredStrategy(devices=config.get('GPUS', ["/gpu:0"]))
-    tf.print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+    #tf.print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
     with strategy.scope():
 
         input_shape = config.get('DIM', [10, 224, 224])

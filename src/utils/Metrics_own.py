@@ -170,15 +170,9 @@ def weighted_cce_dice_coef(weights):
 
 # https://www.kaggle.com/c/tgs-salt-identification-challenge/discussion/63044
 
-def castF(x):
-    return K.cast(x, K.floatx())
-
-def castB(x):
-    return K.cast(x, bool)
-
-def iou_loss(true,pred):  #this is a loss
+def iou_loss(true,pred):
     """
-
+    loss --> 1 - iou score
     :param true:
     :param pred:
     :return:
@@ -200,128 +194,6 @@ def iou_core(true,pred):
     notTrue = 1 - true
     union = true + (notTrue * pred)
     return (K.sum(intersection, axis=-1) + K.epsilon()) / (K.sum(union, axis=-1) + K.epsilon())
-
-def competitionMetric2(true, pred):
-    """
-
-    :param true:
-    :param pred:
-    :return:
-    """
-    #any shape can go - can't be a loss function
-
-    tresholds = [0.5 + (i*.05)  for i in range(10)]
-
-    #flattened images (batch, pixels)
-    true = K.batch_flatten(true)
-    pred = K.batch_flatten(pred)
-    pred = castF(K.greater(pred, 0.5))
-
-    #total white pixels - (batch,)
-    trueSum = K.sum(true, axis=-1)
-    predSum = K.sum(pred, axis=-1)
-
-    #has mask or not per image - (batch,)
-    true1 = castF(K.greater(trueSum, 1))    
-    pred1 = castF(K.greater(predSum, 1))
-
-    #to get images that have mask in both true and pred
-    truePositiveMask = castB(true1 * pred1)
-
-    #separating only the possible true positives to check iou
-    testTrue = tf.boolean_mask(true, truePositiveMask)
-    testPred = tf.boolean_mask(pred, truePositiveMask)
-
-    #getting iou and threshold comparisons
-    iou = iou_core(testTrue,testPred) 
-    truePositives = [castF(K.greater(iou, tres)) for tres in tresholds]
-
-    #mean of thressholds for true positives and total sum
-    truePositives = K.mean(K.stack(truePositives, axis=-1), axis=-1)
-    truePositives = K.sum(truePositives)
-
-    #to get images that don't have mask in both true and pred
-    trueNegatives = (1-true1) * (1 - pred1) # = 1 -true1 - pred1 + true1*pred1
-    trueNegatives = K.sum(trueNegatives) 
-
-    return (truePositives + trueNegatives) / castF(K.shape(true)[0])
-
-# Define IoU metric
-# https://www.tensorflow.org/api_docs/python/tf/metrics/mean_iou
-# Used in Kaggle (https://github.com/daicoolb/unet_kaggle2018/blob/master/unet_full.py)
-# background ignored
-def mean_iou(y_true, y_pred):
-    prec = []
-    for t in np.arange(0.5, 1.0, 0.05):
-        y_pred_ = tf.to_int32(y_pred > t)
-        score, up_opt = tf.metrics.mean_iou(y_true, y_pred_, 4) # define the number of classes
-        K.get_session().run(tf.local_variables_initializer())
-        with tf.control_dependencies([up_opt]):
-            score = tf.identity(score)
-        prec.append(score)
-    return K.mean(K.stack(prec), axis=0)
-
-# returns the mean iou for class 3 / LV
-# running vars --> http://ronny.rest/blog/post_2017_09_11_tf_metrics/
-def mean_iou_lv(y_true, y_pred):
-    prec = []
-    y_pred = tf.expand_dims(y_pred[...,3], axis=-1)
-    y_true = tf.expand_dims(y_true[...,3],axis=-1)
-    
-    for t in np.arange(0.5, 1.0, 0.05):
-        y_pred_ = tf.to_int32(y_pred > t)
-        score, up_opt = tf.metrics.mean_iou(y_true,y_pred_, 2) 
-        # define the number of classes
-        K.get_session().run(tf.local_variables_initializer())
-        with tf.control_dependencies([up_opt]):
-            score = tf.identity(score)
-        prec.append(score)
-    return K.mean(K.stack(prec), axis=0)
-
-# returns the mean iou for class 2 / myo
-def mean_iou_myo(y_true, y_pred):
-    prec = []
-    y_pred = tf.expand_dims(y_pred[...,2], axis=-1)
-    y_true = tf.expand_dims(y_true[...,2],axis=-1)
-    for t in np.arange(0.5, 1.0, 0.05):
-        y_pred_ = tf.to_int32(y_pred > t)
-        score, up_opt = tf.metrics.mean_iou(y_true,y_pred_, 2) 
-        # define the number of classes
-        K.get_session().run(tf.local_variables_initializer())
-        with tf.control_dependencies([up_opt]):
-            score = tf.identity(score)
-        prec.append(score)
-    return K.mean(K.stack(prec), axis=0)
-
-# returns the mean iou for class 1 / RV
-def mean_iou_rv(y_true, y_pred):
-    prec = []
-    y_pred = tf.expand_dims(y_pred[...,1], axis=-1)
-    y_true = tf.expand_dims(y_true[...,1],axis=-1)
-    for t in np.arange(0.5, 1.0, 0.05):
-        y_pred_ = tf.to_int32(y_pred > t)
-        score, up_opt = tf.metrics.mean_iou(y_true,y_pred_, 2) 
-        # define the number of classes
-        K.get_session().run(tf.local_variables_initializer())
-        with tf.control_dependencies([up_opt]):
-            score = tf.identity(score)
-        prec.append(score)
-    return K.mean(K.stack(prec), axis=0)
-
-# returns the mean iou for class 0 / Background
-def mean_iou_background(y_true, y_pred):
-    prec = []
-    y_pred = tf.expand_dims(y_pred[...,0], axis=-1)
-    y_true = tf.expand_dims(y_true[...,0],axis=-1)
-    for t in np.arange(0.5, 1.0, 0.05):
-        y_pred_ = tf.to_int32(y_pred > t)
-        score, up_opt = tf.metrics.mean_iou(y_true,y_pred_, 2) 
-        # define the number of classes
-        K.get_session().run(tf.local_variables_initializer())
-        with tf.control_dependencies([up_opt]):
-            score = tf.identity(score)
-        prec.append(score)
-    return K.mean(K.stack(prec), axis=0)
 
 def dice_coef_background(y_true, y_pred):
     y_pred = y_pred[...,0]
@@ -348,12 +220,10 @@ def dice_coef_lv(y_true, y_pred):
 def dice_coef_labels(y_true, y_pred):
 
     # ignore background, slice from the back to work with and without background channels
-    y_pred = y_pred[...,-3:-1]
-    y_true = y_true[...,-3:-1]
+    y_pred = y_pred[...,-3:]
+    y_true = y_true[...,-3:]
     
     return dice_coef(y_true, y_pred)
-
-# ignore background score
 
 def dice_coef(y_true, y_pred):
     smooth = 1.
@@ -399,35 +269,15 @@ def dice_numpy(y_true, y_pred, empty_score=1.0):
     return 2. * intersection.sum() / im_sum
 
 
-def cce_dice_loss(y_true, y_pred):
+def cce_dice_loss(y_true, y_pred, w_cce=0.5, w_dice=1):
     """
 
     :param y_true:
     :param y_pred:
     :return:
     """
-    return  0.5 * tf.keras.losses.categorical_crossentropy(y_true, y_pred)- dice_coef(y_true, y_pred)
+    return  w_cce * tf.keras.losses.categorical_crossentropy(y_true, y_pred) - (w_dice * dice_coef(y_true, y_pred))
 
-
-def bce_dice_iou_loss(y_true, y_pred):
-    """
-
-    :param y_true:
-    :param y_pred:
-    :return:
-    """
-    return (0.1 * iou_loss(y_true, y_pred) + 0.5 * tf.keras.losses.binary_crossentropy(y_true, y_pred))- dice_coef(y_true, y_pred)
-
-
-def bce_jac_loss(y_true_, y_pred_):
-
-    if y_true_[0].shape[-1] > 4:  # make sure to work with channel first batches
-        y_pred_ = tf.transpose(y_pred_, [0, 4, 2, 3, 1])
-        y_true_ = tf.transpose(y_true_, [0, 4, 2, 3, 1])
-    
-    y_pred = y_pred_[...,1:]
-    y_true = y_true_[...,1:]
-    return (0.1 * jaccard_distance_loss(y_true, y_pred) + 0.5 * tf.keras.losses.binary_crossentropy(y_true, y_pred))
 
 def jaccard_distance_label_loss(y_true, y_pred):
     
@@ -439,8 +289,8 @@ def jaccard_distance_label_loss(y_true, y_pred):
 def bce_labels_loss(y_true, y_pred):
 
     if y_pred.shape[-1] == 4:
-        y_pred = y_pred[...,1:]
-        y_true = y_true[...,1:]
+        y_pred = y_pred[...,-3:]
+        y_true = y_true[...,-3:]
     
     return tf.keras.losses.binary_crossentropy(y_true, y_pred)
 
@@ -448,16 +298,16 @@ def dice_coef_labels_loss(y_true, y_pred):
 
     if y_pred.shape[-1] == 4:
     #if tf.shape(y_pred)[-1] == 4:
-        y_pred = y_pred[..., 1:]
-        y_true = y_true[..., 1:]
+        y_pred = y_pred[..., -3:]
+        y_true = y_true[..., -3:]
     
     return 1 - dice_coef(y_true, y_pred)
 
 
 def dice_coef_squared_labels_loss(y_true, y_pred):
     if y_pred.shape[-1] == 4:
-        y_pred = y_pred[..., 1:]
-        y_true = y_true[..., 1:]
+        y_pred = y_pred[..., -3:]
+        y_true = y_true[..., -3:]
     
     return 1 - dice_coef_squared(y_true, y_pred)
 
@@ -493,19 +343,7 @@ def soft_dice_loss(y_true, y_pred, epsilon=1e-6):
     return 1 - K.mean(numerator / (denominator + epsilon)) # average over classes and batch
 
 
-def bce_dice_jac_loss(y_true, y_pred):
-
-    #if y_true[0].shape[-1] > 4:  # make sure to work with channel first batches
-    #    y_pred = tf.transpose(y_pred, [0, 4, 2, 3, 1])
-    #    y_true = tf.transpose(y_true, [0, 4, 2, 3, 1])
-    
-    y_pred = y_pred[...,-3:]
-    y_true = y_true[...,-3:]
-    #return jaccard_distance_loss(y_true, y_pred) + tf.keras.losses.binary_crossentropy(y_true, y_pred)- dice_coef(y_true, y_pred)
-    return (0.1 * jaccard_distance_loss(y_true, y_pred) + 0.5 * keras.losses.binary_crossentropy(y_true, y_pred))- dice_coef(y_true, y_pred)
-
-
-def bce_dice_loss(y_true, y_pred):
+def bce_dice_loss(y_true, y_pred, w_bce=0.5, w_dice=1.):
     """
     weighted binary cross entropy - dice coef loss
     uses all labels if shale labels ==3
@@ -515,14 +353,13 @@ def bce_dice_loss(y_true, y_pred):
     :return:
     """
 
-    # use all channels for the binary crossentropy
-    # use only the labels for the dice loss
+    # use only the labels for the loss
     if y_pred.shape[-1] == 4:
         y_pred = y_pred[...,-3:]
         y_true = y_true[...,-3:]
 
 
-    return 0.5 * tf.keras.losses.binary_crossentropy(y_true, y_pred) - dice_coef(y_true, y_pred)
+    return w_bce * tf.keras.losses.binary_crossentropy(y_true, y_pred) - w_dice * dice_coef(y_true, y_pred)
 
 # https://github.com/keras-team/keras/issues/9395
 def generalized_dice_coef(y_true, y_pred):
@@ -571,24 +408,6 @@ def tversky_loss(y_true, y_pred):
     
     Ncl = K.cast(K.shape(y_true)[-1], 'float32')
     return Ncl-T
-
-
-def iou_coef_loss(y_true, y_pred, smooth=1):
-    intersection = K.sum(K.abs(y_true * y_pred), axis=[1,2,3])
-    union = K.sum(y_true,[1,2,3])+K.sum(y_pred,[1,2,3])-intersection
-    iou = K.mean((intersection + smooth) / (union + smooth), axis=0)
-    return -1 * iou
-
-def iou_coef_labels_loss(y_true, y_pred, smooth=1):
-    
-    if y_true[0].shape[-1] > 4:  # make sure to work with channel first batches
-        y_pred = tf.transpose(y_pred, [0, 4, 2, 3, 1])
-        y_true = tf.transpose(y_true, [0, 4, 2, 3, 1])
-    
-    y_pred = y_pred[...,-3:-1]
-    y_true = y_true[...,-3:-1]
-    return iou_coef_loss(y_true, y_pred)
-
 
 
 # https://github.com/vuptran/cardiac-segmentation/blob/master/helpers.py

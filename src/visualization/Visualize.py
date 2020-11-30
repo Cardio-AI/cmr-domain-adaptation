@@ -335,11 +335,19 @@ def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=Non
 
 
 def bland_altman_metric_plot(metric, ax = None):
-    """
-    Plots a Bland Altmann plot for a evaluation dataframe from the acdc scripts
+    '''
+    Plots a Bland Altmann plot for a evaluation dataframe from the eval scripts
     :param metric: pd.Dataframe
     :return: plt.ax
-    """
+    Parameters
+    ----------
+    metric :
+    ax :
+
+    Returns
+    -------
+
+    '''
     if ax is None:
         fig, ax = plt.subplots(figsize=(20, 15))
 
@@ -421,10 +429,22 @@ def plot_confusion_matrix(y_true, y_pred, classes,
                           normalize=False,
                           title=None,
                           cmap=plt.cm.Blues):
-    """
+    '''
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
-    """
+    Parameters
+    ----------
+    y_true :
+    y_pred :
+    classes :
+    normalize :
+    title :
+    cmap :
+
+    Returns
+    -------
+
+    '''
     if not title:
         if normalize:
             title = 'Normalized confusion matrix'
@@ -442,7 +462,7 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     else:
         print('Confusion matrix, without normalization')
 
-    print(cm)
+    logging.info(cm)
 
     fig, ax = plt.subplots(figsize=(15, 10))
     im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
@@ -473,9 +493,23 @@ def plot_confusion_matrix(y_true, y_pred, classes,
 
 
 def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f_name='4d_volume.png'):
-    # creates a grid with # timesteps * z-slices
-    # saves all slices as fig
-    # expects nda with t, z, x, y
+    '''
+    Creates a grid with # timesteps * z-slices
+    #saves all slices as fig
+    expects nda with t, z, x, y
+    Parameters
+    ----------
+    img_4d :
+    timesteps : list of int defining the timesteps which should be print
+    save : bool, save the plot or not
+    path : path, where this fig should be saved to
+    mask_4d :
+    f_name :
+
+    Returns
+    -------
+
+    '''
 
     if isinstance(img_4d, sitk.Image):
         img_4d = sitk.GetArrayFromImage(img_4d)
@@ -491,10 +525,9 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
     elif img_4d.shape[-1] == 1:
         img_4d = img_4d[..., 0]  # ignore single channels at the end, matpotlib cant plot this shape
 
-    
     if mask_4d is not None: # if images and masks are provided
-        if mask_4d.shape[-1] == 4:
-            mask_4d = mask_4d[..., 1:]  # ignore background for masks if 4 channels are given
+        if mask_4d.shape[-1] in [3,4]:
+            mask_4d = mask_4d[..., -3:]  # ignore background for masks if 4 channels are given
     
     
     # define the number of subplots
@@ -505,13 +538,11 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
 
     # long axis volumes have only one z slice squeeze=False is neccessary to avoid sqeezing the axes
     fig, ax = plt.subplots(len(timesteps), img_4d.shape[1], figsize=[z_size, t_size],squeeze=False)
-    #print(timesteps)
     for t_, img_3d in enumerate(img_4d):  # traverse trough time
 
         for z, slice in enumerate(img_3d):  # traverse through the z-axis
             # show slice and delete ticks
             if mask_4d is not None:
-                
                 ax[t_][z] = show_slice_transparent(slice, mask_4d[t_, z, ...], show=True, ax=ax[t_][z])
             else:
                 ax[t_][z] = show_slice_transparent(slice, show=True, ax=ax[t_][z])
@@ -531,22 +562,29 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
         save_plot(fig, path, f_name, override=True, tight=False)
     else:
         return fig
-        #fig.show()
 
 
 def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figures/temp.png',
                 fig_size=[25, 8], dpi=200, interpol='nearest'):
-    """
+    '''
     plots a 3D nda, if a mask is given combine mask and image slices
-    :param show:
-    :param img_3d:
-    :param mask_3d:
-    :param timestep:
-    :param save:
-    :param path:
-    :param fig_size:
-    :return: plot figure
-    """
+    Parameters
+    ----------
+    img_3d :
+    mask_3d :
+    timestep :
+    save :
+    path :
+    fig_size :
+    dpi :
+    interpol :
+
+    Returns
+    -------
+
+    '''
+
+    max_number_of_slices = 12
 
     if isinstance(img_3d, sitk.Image):
         img_3d = sitk.GetArrayFromImage(img_3d)
@@ -574,15 +612,15 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
         img_3d = img_3d[..., 0]  # matpotlib cant plot this shape
 
     if mask_3d is not None:
-        if mask_3d.shape[-1] == 4:
-            mask_3d = mask_3d[..., 1:]  # ignore background if 4 channels are given
+        if mask_3d.shape[-1] in [3,4]:
+            mask_3d = mask_3d[..., -3:]  # ignore background if 4 channels are given
         elif mask_3d.shape[-1] > 4:
             mask_3d = transform_to_binary_mask(mask_3d)
 
     slice_n = 1
     # slice very huge 3D volumes, otherwise they are too small on the plot
-    if (img_3d.shape[0] > 20) and (img_3d.ndim == 3):
-        slice_n = img_3d.shape[0] // 20
+    if (img_3d.shape[0] > max_number_of_slices) and (img_3d.ndim == 3):
+        slice_n = img_3d.shape[0] // max_number_of_slices
 
     img_3d = img_3d[::slice_n]
     mask_3d = mask_3d[::slice_n]if mask_3d is not None else mask_3d
@@ -601,7 +639,6 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
 
         ax.set_xticks([])
         ax.set_yticks([])
-        #real_index = idx + (idx * slice_n)
         #ax.set_title('z-axis: {}'.format(idx), color='r', fontsize=plt.rcParams['font.size'])
 
 
@@ -611,15 +648,111 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
 
     else:
         return fig
-        fig.canvas.draw()
-        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        return data
 
 
-def transform_to_binary_mask(mask_nda, mask_values=[0, 1, 2, 3]):
-    # transform the labels to binary channel masks
+def plot_dice_per_slice_line(gt, pred, save_path='reports/figures/error_per_labelandslice.png'):
+    '''
+        Calculate the dice per slice, create a stacked barchart for this plot
+        Parameters
+        ----------
+        gt : ground truth - 3D np.ndarray with 1,2,3 ... at the voxel-position of the label
+        pred : prediction - 3D np.ndarray with 1,2,3 ... at the voxel-position of the label
+        save_path : False = No savefig, str with full file and pathname otherwise
 
+        Returns
+        -------
+
+        '''
+    import src.utils.Metrics_own as metr
+
+    myos = [metr.dice_coef_myo(g, p).numpy() for g, p in zip(gt, pred)]
+    lvs = [metr.dice_coef_lv(g, p).numpy() for g, p in zip(gt, pred)]
+    rvs = [metr.dice_coef_rv(g, p).numpy() for g, p in zip(gt, pred)]
+
+    plt.plot(myos, label='myo')
+    plt.plot(lvs, label='lv')
+    plt.plot(rvs, label='rv')
+    plt.legend()
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight')
+    else:
+        plt.show()
+
+
+def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_labelandslice.png'):
+    '''
+    Calculate the dice per slice, create a stacked barchart for this plot
+    Parameters
+    ----------
+    gt : ground truth - 3D np.ndarray with 1,2,3 ... at the voxel-position of the label
+    pred : prediction - 3D np.ndarray with 1,2,3 ... at the voxel-position of the label
+    save_path : False = No savefig, str with full file and pathname otherwise
+
+    Returns
+    -------
+
+    '''
+    import src.utils.Metrics_own as metr
+
+    myos = [metr.dice_coef_myo(g, p).numpy() for g, p in zip(gt, pred)]
+    myos_gt = [int(not g.max()) for g in gt[..., 1]]
+    lvs = [metr.dice_coef_lv(g, p).numpy() for g, p in zip(gt, pred)]
+    lvs_gt = [int(not g.max()) for g in gt[..., 2]]
+    rvs = [metr.dice_coef_rv(g, p).numpy() for g, p in zip(gt, pred)]
+    rvs_gt = [int(not g.max()) for g in gt[..., 0]]
+
+    scores = list(zip(lvs, lvs_gt, myos, myos_gt, rvs, rvs_gt))
+
+    import matplotlib
+    plt.rcParams.update({'font.size': 25})
+    bottom = 0
+    cmap = matplotlib.cm.get_cmap('RdYlBu')
+
+    def custom_map(value):
+        colors = []
+        for v in value:
+            # start with white
+            color = (1, 1, 1, 0)
+            # reverse 1 for slices with no label
+            if v < 1:
+                # use black for the gt bars
+                if v == 0:
+                    color = (0, 0, 0, 1)
+                # use the colorbar for the dice
+                else:
+                    color = cmap(v)
+            colors.append(color)
+
+        return colors
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+    elements = range(len(scores))
+    for v in scores:
+        rects = ax.bar([0, 1, 2, 3, 4, 5], 1, bottom=bottom, color=custom_map(v))
+        bottom += 1
+    fig.colorbar(matplotlib.cm.ScalarMappable(cmap=cmap), ax=ax)
+    plt.xticks([0, 1, 2, 3, 4, 5], ['LV', 'LV GT', 'MYO', 'MYO GT', 'RV', 'RV GT'], rotation=90)
+    plt.ylabel('Slice position, \n 0 = lower part (1 slice = 1.5 mm)')
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight')
+    else:
+        plt.show()
+
+def transform_to_binary_mask(mask_nda, mask_values=None):
+    '''
+    Transform the labels to binary channel masks
+    Parameters
+    ----------
+    mask_nda : 2D or 3D np.ndarray with one value per label,
+    mask_values : list of int
+
+    Returns np.ndarray with ndim +1 and one binary channel per label
+    -------
+
+    '''
+
+    if mask_values is None:
+        mask_values = [0, 1, 2, 3]
     mask = np.zeros((*mask_nda.shape, len(mask_values)), dtype=np.bool)
     for ix, mask_value in enumerate(mask_values):
         mask[..., ix] = mask_nda == mask_value
@@ -633,8 +766,19 @@ def plot_value_histogram(nda, f_name='histogram.jpg', image=True, reports_path='
     3rd plot with .75 quantile (20 buckets)
     4th plot with .5 quantile (bucketsize = Counter.most_common())
     y axis is percentual scaled
-    x axis linear spaced - logspaced buckets are possible but not so visual clear
+    x axis linear spaced - logspaced buckets are possible
+    Parameters
+    ----------
+    nda :
+    f_name :
+    image :
+    reports_path :
+
+    Returns
+    -------
+
     '''
+
     ensure_dir(reports_path)
     nda_img_flat = nda.flatten()
     plt.close('all')

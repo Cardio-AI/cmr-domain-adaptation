@@ -74,7 +74,7 @@ def copy_meta(new_image, reference_sitk_img):
 
 
 
-def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, override_spacing=None):
+def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, override_spacing=None, copy_direction=True):
     """
     Copy metadata, UID and structural information from one image to another
     Works also for different dimensions, returns new_image with copied structural info
@@ -88,7 +88,12 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
     try:
         # make sure this method works with nda and sitk images
         if isinstance(new_image, np.ndarray):
-            new_image = sitk.GetImageFromArray(new_image)
+            if len(new_image.shape) == 4:
+                # 4D needs to be built from a series
+                new_image = [sitk.GetImageFromArray(img) for img in new_image]
+                new_image = sitk.JoinSeries(new_image)
+            else:
+                new_image = sitk.GetImageFromArray(new_image)
 
         ensure_dir(os.path.dirname(os.path.abspath(full_filename)))
 
@@ -109,21 +114,24 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
             elif (reference_sitk_img.GetDimension() == new_image.GetDimension()):
 
                 # copy spacing, origin and rotation but keep size as it is
-                new_image.SetDirection(reference_sitk_img.GetDirection())
+                if copy_direction:
+                    new_image.SetDirection(reference_sitk_img.GetDirection())
                 new_image.SetOrigin(reference_sitk_img.GetOrigin())
                 new_image.SetSpacing(reference_sitk_img.GetSpacing())
 
             # copy structural information to smaller images e.g. 4D to 3D
             elif reference_sitk_img.GetDimension() > new_image.GetDimension():
                 shape_ = len(new_image.GetSize())
+
                 reference_shape = len(reference_sitk_img.GetSize())
 
                 # copy direction to smaller images
                 # 1. extract the direction, 2. create a matrix, 3. slice by the new shape, 4. flatten
-                direction = np.array(reference_sitk_img.GetDirection())
-                dir_ = direction.reshape(reference_shape, reference_shape)
-                direction = dir_[:shape_, :shape_].flatten()
-                new_image.SetDirection(direction)
+                if copy_direction:
+                    direction = np.array(reference_sitk_img.GetDirection())
+                    dir_ = direction.reshape(reference_shape, reference_shape)
+                    direction = dir_[:shape_, :shape_].flatten()
+                    new_image.SetDirection(direction)
 
                 new_image.SetOrigin(reference_sitk_img.GetOrigin()[:shape_])
                 new_image.SetSpacing(reference_sitk_img.GetSpacing()[:shape_])
@@ -138,7 +146,6 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
             logging.debug('spatial data_copied: {:0.3f}s'.format(time() - t1))
 
             if override_spacing:
-                new_image.SetDirection()
                 new_image.SetSpacing(override_spacing)
 
         if full_filename != None:
@@ -296,8 +303,8 @@ def create_2d_slices_from_4d_volume_files(img_f, mask_f, export_path, filter_by_
             mask_file = '{}_t{}_z{}_{}{}'.format(patient_name, str(t), str(z), 'msk', '.nrrd')
 
             # save nrrd file with metadata
-            copy_meta_and_save(slice_2d[0], img_4d_sitk, os.path.join(export_path, img_file))
-            copy_meta_and_save(slice_2d[1], img_4d_sitk, os.path.join(export_path, mask_file))
+            copy_meta_and_save(slice_2d[0], img_4d_sitk, os.path.join(export_path, img_file),copy_direction=False)
+            copy_meta_and_save(slice_2d[1], img_4d_sitk, os.path.join(export_path, mask_file),copy_direction=False)
 
     return [masked_t, list(img_4d_nda.shape)]
 

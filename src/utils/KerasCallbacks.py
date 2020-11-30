@@ -58,14 +58,14 @@ def get_callbacks(config={}, batch_generator=None, metrics=None):
                         monitor=config.get('SAVE_MODEL_FUNCTION', 'loss'),
                         mode=config.get('SAVE_MODEL_MODE', 'min'),
                         save_freq='epoch'))
-    callbacks.append(
+    '''callbacks.append(
         tensorflow.keras.callbacks.TensorBoard(log_dir=config.get('TENSORBOARD_LOG_DIR', 'temp/tf_log'),
                                                histogram_freq=0,
                                                write_graph=False,
                                                write_images=False,
                                                update_freq='epoch',
                                                profile_batch=0,
-                                               embeddings_freq=0))
+                                               embeddings_freq=0))'''
 
     callbacks.append(
         tensorflow.keras.callbacks.ReduceLROnPlateau(monitor=config.get('MONITOR_FUNCTION', 'loss'),
@@ -85,8 +85,14 @@ def get_callbacks(config={}, batch_generator=None, metrics=None):
                              mult_factor=1.5))"""
 
     callbacks.append(
-        LRTensorBoard(log_dir=config.get('TENSORBOARD_LOG_DIR', 'temp/tf_log'))
-    )
+        LRTensorBoard(log_dir=config.get('TENSORBOARD_LOG_DIR', 'temp/tf_log'),
+                      histogram_freq=0,
+                      write_graph=False,
+                      write_images=False,
+                      update_freq='epoch',
+                      profile_batch=0,
+                      embeddings_freq=0))
+
     if metrics: # optimizer will be changed to SGD, if adam does not improve any more
         # changer will call this method without metrics to avoid recursive learning
         logging.info('optimizer will be changed to SGD after adam does not improve any more')
