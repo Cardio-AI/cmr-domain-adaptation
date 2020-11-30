@@ -287,17 +287,17 @@ class DataGenerator(BaseGenerator):
 
             elif sitk_img.GetDimension() == 3:
                 # round up
-                x_s_img = np.ceil((old_size_img[2] * old_spacing_img[2])) / self.SPACING[2]
-                y_s_img = np.ceil((old_size_img[1] * old_spacing_img[1])) / self.SPACING[1]
-                z_s_img = np.ceil((old_size_img[0] * old_spacing_img[0])) / self.SPACING[0]
+                x_s_img = np.round((old_size_img[2] * old_spacing_img[2])) / self.SPACING[2]
+                y_s_img = np.round((old_size_img[1] * old_spacing_img[1])) / self.SPACING[1]
+                z_s_img = np.round((old_size_img[0] * old_spacing_img[0])) / self.SPACING[0]
                 # not necessary if x and y have the same shape
                 #z_s = self.DIM[0] #fill z with zeros slices or cut
                 #z_s_img = max(self.DIM[0], z_s_img) # z must fit in the network input, resample with spacing or min network input
                 new_size_img = (int(x_s_img), int(y_s_img), int(z_s_img))
 
-                x_s_msk = np.ceil((old_size_msk[2] * old_spacing_msk[2])) / self.SPACING[2]
-                y_s_msk = np.ceil((old_size_msk[1] * old_spacing_msk[1])) / self.SPACING[1]
-                z_s_msk = np.ceil((old_size_msk[0] * old_spacing_msk[0])) / self.SPACING[0]
+                x_s_msk = np.round((old_size_msk[2] * old_spacing_msk[2])) / self.SPACING[2]
+                y_s_msk = np.round((old_size_msk[1] * old_spacing_msk[1])) / self.SPACING[1]
+                z_s_msk = np.round((old_size_msk[0] * old_spacing_msk[0])) / self.SPACING[0]
                 # not necessary if x and y have the same shape
                 #z_s = self.DIM[0] #fill z with zeros slices or cut
                 #z_s_msk = max(self.DIM[0], z_s_msk) # z must fit in the network input, resample with spacing or min network input
@@ -556,9 +556,9 @@ class SpatialUnetDataGenerator(DataGenerator):
 
             elif sitk_img.GetDimension() == 3:
                 # round up
-                x_s = np.ceil((old_size[2] * old_spacing[2])) / self.SPACING[2]
-                y_s = np.ceil((old_size[1] * old_spacing[1])) / self.SPACING[1]
-                z_s = np.ceil((old_size[0] * old_spacing[0])) / self.SPACING[0]
+                x_s = np.round((old_size[2] * old_spacing[2])) / self.SPACING[2]
+                y_s = np.round((old_size[1] * old_spacing[1])) / self.SPACING[1]
+                z_s = np.round((old_size[0] * old_spacing[0])) / self.SPACING[0]
                 # not necessary if x and y have the same shape
                 # z_s = self.DIM[0] #fill z with zeros slices or cut
                 z_s = max(self.DIM[0],
@@ -766,37 +766,37 @@ class CycleMotionDataGenerator(DataGenerator):
             if sitk_img.GetDimension() == 2:
                 x_s_img = (old_size_img[1] * old_spacing_img[1]) / self.SPACING[1]
                 y_s_img = (old_size_img[0] * old_spacing_img[0]) / self.SPACING[0]
-                new_size_img = (int(x_s_img), int(y_s_img))
+                new_size_img = (int(np.round(x_s_img)), int(np.round(y_s_img)))
 
                 x_s_msk = (old_size_msk[1] * old_spacing_msk[1]) / self.SPACING[1]
                 y_s_msk = (old_size_msk[0] * old_spacing_msk[0]) / self.SPACING[0]
-                new_size_msk = (int(x_s_msk), int(y_s_msk))
+                new_size_msk = (int(np.round(x_s_msk)), int(np.round(y_s_msk)))
 
             elif sitk_img.GetDimension() == 3:
                 # round up
-                x_s_img = np.ceil((old_size_img[2] * old_spacing_img[2])) / self.SPACING[2]
-                y_s_img = np.ceil((old_size_img[1] * old_spacing_img[1])) / self.SPACING[1]
-                z_s_img = np.ceil((old_size_img[0] * old_spacing_img[0])) / self.SPACING[0]
+                x_s_img = (old_size_img[2] * old_spacing_img[2]) / self.SPACING[2]
+                y_s_img = (old_size_img[1] * old_spacing_img[1]) / self.SPACING[1]
+                z_s_img = (old_size_img[0] * old_spacing_img[0]) / self.SPACING[0]
                 #z_s_img = max(self.DIM[0],z_s_img)  # z must fit in the network input, resample with spacing or min network input
-                new_size_img = (int(x_s_img), int(y_s_img), int(z_s_img))
+                new_size_img = (int(np.round(x_s_img)), int(np.round(y_s_img)), int(np.round(z_s_img)))
 
-                x_s_msk = np.ceil((old_size_msk[2] * old_spacing_msk[2])) / self.SPACING[2]
-                y_s_msk = np.ceil((old_size_msk[1] * old_spacing_msk[1])) / self.SPACING[1]
-                z_s_msk = np.ceil((old_size_msk[0] * old_spacing_msk[0])) / self.SPACING[0]
+                x_s_msk = (old_size_msk[2] * old_spacing_msk[2]) / self.SPACING[2]
+                y_s_msk = (old_size_msk[1] * old_spacing_msk[1]) / self.SPACING[1]
+                z_s_msk = (old_size_msk[0] * old_spacing_msk[0]) / self.SPACING[0]
                 #z_s_msk = max(self.DIM[0],z_s_msk)  # z must fit in the network input, resample with spacing or min network input
-                new_size_msk = (int(x_s_msk), int(y_s_msk), int(z_s_msk))
+                new_size_msk = (int(np.round(x_s_msk)), int(np.round(y_s_msk)), int(np.round(z_s_msk)))
 
-                x_s_sax3d = np.ceil((old_size_sax3d[2] * old_spacing_sax3d[2])) / self.SPACING[2]
-                y_s_sax3d = np.ceil((old_size_sax3d[1] * old_spacing_sax3d[1])) / self.SPACING[1]
-                z_s_sax3d = np.ceil((old_size_sax3d[0] * old_spacing_sax3d[0])) / self.SPACING[0]
+                x_s_sax3d = (old_size_sax3d[2] * old_spacing_sax3d[2]) / self.SPACING[2]
+                y_s_sax3d = (old_size_sax3d[1] * old_spacing_sax3d[1]) / self.SPACING[1]
+                z_s_sax3d = (old_size_sax3d[0] * old_spacing_sax3d[0]) / self.SPACING[0]
                 #z_s_sax3d = max(self.DIM[0],z_s_sax3d)  # z must fit in the network input, resample with spacing or min network input
-                new_size_sax3d = (int(x_s_sax3d), int(y_s_sax3d), int(z_s_sax3d))
+                new_size_sax3d = (int(np.round(x_s_sax3d)), int(np.round(y_s_sax3d)), int(np.round(z_s_sax3d)))
 
-                x_s_saxtoax3d = np.ceil((old_size_saxtoax3d[2] * old_spacing_saxtoax3d[2])) / self.SPACING[2]
-                y_s_saxtoax3d = np.ceil((old_size_saxtoax3d[1] * old_spacing_saxtoax3d[1])) / self.SPACING[1]
-                z_s_saxtoax3d = np.ceil((old_size_saxtoax3d[0] * old_spacing_saxtoax3d[0])) / self.SPACING[0]
+                x_s_saxtoax3d = (old_size_saxtoax3d[2] * old_spacing_saxtoax3d[2]) / self.SPACING[2]
+                y_s_saxtoax3d = (old_size_saxtoax3d[1] * old_spacing_saxtoax3d[1]) / self.SPACING[1]
+                z_s_saxtoax3d = (old_size_saxtoax3d[0] * old_spacing_saxtoax3d[0]) / self.SPACING[0]
                 #z_s_saxtoax3d = max(self.DIM[0],z_s_saxtoax3d)  # z must fit in the network input, resample with spacing or min network input
-                new_size_saxtoax3d = (int(x_s_saxtoax3d), int(y_s_saxtoax3d), int(z_s_saxtoax3d))
+                new_size_saxtoax3d = (int(np.round(x_s_saxtoax3d)), int(np.round(y_s_saxtoax3d)), int(np.round(z_s_saxtoax3d)))
 
                 # we can also resize with the resamplefilter from sitk
                 # this cuts the image on the bottom and right
@@ -882,9 +882,6 @@ class CycleMotionDataGenerator(DataGenerator):
         mask_nda = sitk.GetArrayFromImage(sitk_msk)
 
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
-        t1 = time()
-
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'clipped and {} normalized image:'.format(self.SCALER))
 
         if self.AUGMENT_GRID:  # augment with grid transform from albumenation
             # apply grid augmentation,

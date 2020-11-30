@@ -671,13 +671,15 @@ def crop_center_3d(img, cropz, cropx, cropy):
     """
     z, y, x = img.shape # get size of the last three axis
     logging.debug('image shape at the beginning of crop_center: {}\n cropx : {}'.format(img.shape, cropx))
-    if cropx >= x and cropy >= y: # if x and y (square shape at this point) are smaller than the desired x,y dont crop
+    if cropx >= x and cropy >= y and cropz < z: # if x and y  are smaller than the desired x,y dont crop
         logging.debug('Just crop z')
-        return img[:cropz, ...] # crop only z
+        start_z = int(np.round((z - cropz)/2))
+        return img[start_z:start_z + cropz, ...] # crop only z
     else:
-        startx = x // 2 - (cropx // 2)
-        starty = y // 2 - (cropy // 2)
-        return img[:cropz, starty:starty + cropy, startx:startx + cropx]
+        startz = int(np.round((z - cropz)/2))
+        startx = int(np.round((x - cropx)/2))
+        starty = int(np.round((y - cropy)/2))
+        return img[startz:startz + cropz, starty:starty + cropy, startx:startx + cropx]
 
 
 def center_crop_or_pad_2d_or_3d(img_nda, mask_nda, dim):
@@ -709,7 +711,6 @@ def center_crop_or_pad_2d_or_3d(img_nda, mask_nda, dim):
         img_nda = np.zeros(mask_nda.shape)
 
     if img_nda.ndim is 2:
-        # TODO: implement crop or pad for 2D
         crop = center_crop_or_pad_2d
 
     elif img_nda.ndim is 3:
@@ -789,7 +790,7 @@ def center_crop_or_pad_3d(img_nda, mask_nda, dim):
     """
     resized_by = 'no pad'
     temp = np.zeros(dim)
-    # first pad, than crop
+    # first pad image
     if img_nda.shape[2] < dim[2] or img_nda.shape[1] < dim[1] or img_nda.shape[0] < dim[0]:  # sometimes we have a volume which should be cropped along z but padded along x and y
         resized_by = 'zero pad'
         logging.debug('image size: {}'.format(img_nda.shape))
@@ -801,14 +802,13 @@ def center_crop_or_pad_3d(img_nda, mask_nda, dim):
             res = aug(**data)
             imgs.append(res['image'])
         img_nda = np.stack(imgs, axis=0)
-        # pad along z
+        # pad along z (before_z,after_z),(before_x,after_x),(beforey,after_y)
         if img_nda.shape[0] < dim[0]:
             padding = int(np.ceil((dim[0] - img_nda.shape[0])/2))
             img_nda = np.pad(img_nda,[(padding,padding),(0,0), (0,0)], 'constant')
-
+    # second pad mask
     if mask_nda.shape[2] < dim[2] or mask_nda.shape[1] < dim[1] or mask_nda.shape[0] < dim[0]:  # sometimes we have a volume which should be cropped along z but resized along x and y
         resized_by = 'zero pad'
-        logging.debug('mask too small, need to resize slice wise')
         logging.debug('mask size: {}'.format(mask_nda.shape))
 
         # pad inplane

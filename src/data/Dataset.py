@@ -1202,3 +1202,34 @@ def get_extremas(df, col='vol in ml', target_col='t_norm'):
     patients = df['patient'].unique()
     return pd.DataFrame([get_min_max_t_per_patient(df[df['patient'] == p], col, target_col) for p in patients])
 
+
+def get_reference_nrrd(p, orig_file_path):
+    """
+    tries to find the patient id in the file path, returns a sitk image
+    Parameters
+    ----------
+    p :
+    orig_file_path :
+
+    Returns
+    -------
+    sitk.Image
+    """
+    file_path = '{}{}'.format(orig_file_path, p)
+    try:
+        file_ = glob.glob(file_path)[0]
+        orig_sitk = sitk.ReadImage(file_)
+        orig_size_ = orig_sitk.GetSize()
+        orig_spacing_ = orig_sitk.GetSpacing()
+        orig_size = list(reversed(orig_size_))
+        orig_spacing = list(reversed(orig_spacing_))
+
+        logging.debug('original shape: {}'.format(orig_size_))
+        logging.debug('original spacing: {}'.format(orig_spacing_))
+        logging.debug('reverse original shape: {}'.format(orig_size))
+        logging.debug('reverse original spacing: {}'.format(orig_spacing))
+    except Exception as e:
+        logging.error('no file found: {}'.format(str(e)))
+        logging.error('path: {}'.format(file_path))
+        orig_sitk = None
+    return orig_sitk
