@@ -251,7 +251,7 @@ def create_affine_transformer_fixed(config, metrics=None, networkname='affine_tr
 
     with strategy.scope():
 
-        inputs = Input((*config.get('DIM', [10, 224, 224]), config.get('IMG_CHANNELS', 1)), dtype=np.float32)
+        inputs = Input((*config.get('DIM', [10, 224, 224]), config.get('IMG_CHANNELS', 1)))
         input_matrix = Input((12), dtype=np.float32)
         indexing = config.get('INDEXING','ij')
 
@@ -259,9 +259,6 @@ def create_affine_transformer_fixed(config, metrics=None, networkname='affine_tr
         y = nrn_layers.SpatialTransformer(interp_method=interp_method, indexing=indexing, ident=False, fill_value=fill_value)([inputs, input_matrix])
 
         model = Model(inputs=[inputs, input_matrix], outputs=[y, input_matrix], name=networkname)
-        """model.compile(optimizer=get_optimizer(config, networkname),
-                      loss=['mse', losses.Grad('l2').loss],
-                      loss_weights=[1.0, 0.01])"""
 
         return model
 
