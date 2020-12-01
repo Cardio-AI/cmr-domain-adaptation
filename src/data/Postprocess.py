@@ -77,7 +77,7 @@ def undo_generator_steps(ndarray, cfg, interpol=sitk.sitkLinear, orig_sitk=None)
     -------
 
     """
-    from src.data.Preprocess import resample_3D, center_crop_or_pad_2d_or_3d
+    from src.data.Preprocess import resample_3D, pad_and_crop
     try:
         # file_4d = glob.glob('{}{}'.format(orig_file_path, p))[0]
         # orig_sitk = sitk.ReadImage(file_4d)
@@ -110,16 +110,15 @@ def undo_generator_steps(ndarray, cfg, interpol=sitk.sitkLinear, orig_sitk=None)
     logging.debug('pred shape: {}'.format(ndarray.shape))
     logging.debug('intermediate size after : {}'.format(new_size))
 
-    ndarray, _, _ = center_crop_or_pad_2d_or_3d(ndarray, ndarray, new_size)
+    ndarray = pad_and_crop(ndarray, new_size)
     logging.debug(ndarray.shape)
 
     # resample, set current spacing
     img_ = sitk.GetImageFromArray(ndarray)
     img_.SetSpacing(cfg['SPACING'])
-
     img_ = resample_3D(img_, size=w_h_size_sitk, spacing=w_h_spacing_sitk, interpolate=interpol)
 
-    logging.info('Size after undo: {}'.format(img_.GetSize()))
-    logging.info('Spacing after undo: {}'.format(img_.GetSpacing()))
+    logging.debug('Size after undo: {}'.format(img_.GetSize()))
+    logging.debug('Spacing after undo: {}'.format(img_.GetSpacing()))
 
     return img_

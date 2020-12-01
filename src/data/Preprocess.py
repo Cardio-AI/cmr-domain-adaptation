@@ -721,6 +721,49 @@ def center_crop_or_pad_2d_or_3d(img_nda, mask_nda, dim):
     return crop(img_nda, mask_nda, dim)
 
 
+def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
+    """
+    Center pad and crop a np.ndarray with any shape to a given target shape
+    Parameters
+    ----------
+    ndarray :
+    target_shape :
+
+    Returns
+    -------
+
+    """
+    empty = np.zeros(target_shape)
+    target_shape = np.array(target_shape)
+    logging.debug('input shape, crop_and_pad: {}'.format(ndarray.shape))
+    logging.debug('target shape, crop_and_pad: {}'.format(target_shape))
+
+    diff = ndarray.shape - target_shape
+
+    # divide into summands to work with odd numbers
+    d = list(
+        (int(x // 2), int(x // 2)) if x % 2 == 0 else (int(np.floor(x / 2)), int(np.floor(x / 2) + 1)) for x in diff)
+    # replace the second slice parameter if it is None, which slice until end of ndarray
+    d = list((abs(x), abs(y)) if y != 0 else (abs(x), None) for x, y in d)
+    # create a bool list, negative numbers --> pad, else --> crop
+    pad_bool = diff < 0
+    crop_bool = diff > 0
+
+    # create one slice obj for cropping and one for padding
+    pad = list(i if b else (None, None) for i, b in zip(d, pad_bool))
+    crop = list(i if b else (None, None) for i, b in zip(d, crop_bool))
+
+    # Create one tuple of slice calls per pad/crop
+    # crop or pad from dif:-dif if second param not None, else replace by None to slice until the end
+    # slice params: slice(start,end,steps)
+    pad = tuple(slice(i[0], -i[1]) if i[1] != None else slice(i[0], i[1]) for i in pad)
+    crop = tuple(slice(i[0], -i[1]) if i[1] != None else slice(i[0], i[1]) for i in crop)
+
+    # crop and pad in one step
+    empty[pad] = ndarray[crop]
+    return empty
+
+
 def center_crop_or_resize_3d(img_nda, mask_nda, dim):
     """
     center crop to given size, check if bigger or smaller

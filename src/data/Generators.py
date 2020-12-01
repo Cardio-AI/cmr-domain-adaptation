@@ -17,7 +17,7 @@ from src.visualization.Visualize import plot_3d_vol, show_slice, show_slice_tran
 from src.data.Preprocess import resample_3D, crop_to_square_2d, center_crop_or_resize_2d, \
     clip_quantile, normalise_image, grid_dissortion_2D_or_3D, crop_to_square_2d_or_3d, center_crop_or_pad_2d_or_3d, \
     transform_to_binary_mask, load_masked_img, random_rotate_2D_or_3D, random_rotate90_2D_or_3D, \
-    elastic_transoform_2D_or_3D, augmentation_compose_2D_or3D
+    elastic_transoform_2D_or_3D, augmentation_compose_2D_or3D, pad_and_crop
 from src.data.Dataset import describe_sitk, get_t_position_from_filename, get_z_position_from_filename, \
     get_patient, get_img_msk_files_from_split_dir
 
@@ -459,202 +459,6 @@ class VAEFlowfieldGenerator(BaseGenerator):
 
         return img1, None, i, ID, time() - t0
 
-class SpatialUnetDataGenerator(DataGenerator):
-    """
-    yields ([AX], [Mask, AXtoSAX , m]) for ST unet
-    e.g.: AX --> AXtoSAX --> AXtoSAXtoAX
-    """
-
-    def __init__(self, x=None, y=None, config={}):
-        super(SpatialUnetDataGenerator, self).__init__(x=x, y=y, config=config)
-
-        self.X_SHAPE = np.empty((self.BATCHSIZE, *self.DIM, self.IMG_CHANNELS), dtype=np.float32)
-        self.Y_SHAPE = np.empty((self.BATCHSIZE, *self.DIM, self.N_CLASSES), dtype=np.float32)
-
-    def __data_generation__(self, list_IDs_temp):
-
-        """
-        Generates data containing batch_size samples
-
-        :param list_IDs_temp:
-        :return: X : (batchsize, *dim, n_channels), Y : (batchsize, *dim, number_of_classes)
-        """
-
-        # Initialization
-        x = np.empty_like(self.X_SHAPE) # ax or sax
-        y = np.empty_like(self.Y_SHAPE) # mask
-
-        futures = set()
-
-        # spawn one thread per worker
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.MAX_WORKERS) as executor:
-
-            t0 = time()
-            # Generate data
-            for i, ID in enumerate(list_IDs_temp):
-
-                try:
-                    # keep ordering of the shuffled indexes
-                    futures.add(executor.submit(self.__preprocess_one_image__, i, ID))
-
-                except Exception as e:
-                    logging.error(
-                        'Exception {} in datagenerator with: image: {} or mask: {}'.format(str(e), self.images[ID],
-                                                                                           self.labels[ID]))
-
-        for i, future in enumerate(as_completed(futures)):
-            # use the indexes to order the batch
-            # otherwise slower images will always be at the end of the batch
-            try:
-                x_, y_, i, ID, needed_time = future.result()
-                x[i,], y[i,] = x_, y_
-                logging.debug('img finished after {:0.3f} sec.'.format(needed_time))
-            except Exception as e:
-                logging.error(
-                    'Exception {} in datagenerator with: image: {} or mask: {}'.format(str(e), self.images[ID],
-                                                                                       self.labels[ID]))
-
-        logging.debug('Batchsize: {} preprocessing took: {:0.3f} sec'.format(self.BATCHSIZE, time() - t0))
-        if self.SINGLE_OUTPUT:
-            return x.astype(np.float32), None
-        else:
-            # empty flowfield
-            zeros = np.zeros((self.BATCHSIZE, *self.DIM, 1), dtype=np.float32)
-            #zeros = np.zeros(12, dtype=np.float32)
-            ident = np.eye(4, dtype=np.float32)[:3,:]
-            return tuple([[x.astype(np.float32)], [y.astype(np.float32), zeros, ident]])
-
-    def __preprocess_one_image__(self, i, ID):
-
-        t0 = time()
-        # load image
-        sitk_img = load_masked_img(sitk_img_f=self.images[ID], mask=self.MASKING_IMAGE,
-                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
-        # load mask or second image
-        sitk_msk = load_masked_img(sitk_img_f=self.labels[ID], mask=self.MASKING_IMAGE,
-                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD,
-                                   mask_labels=self.MASK_VALUES)
-
-        self.__plot_state_if_debug__(sitk_img, sitk_msk, t0, 'raw')
-        t1 = time()
-
-        # crop to square before resample to avoid cropping the lower part of the image if not already square
-        sitk_img, sitk_msk = crop_to_square_2d_or_3d(sitk_img, sitk_msk)
-        self.__plot_state_if_debug__(sitk_img, sitk_msk, t1, 'cropped')
-
-        if self.RESAMPLE:
-
-            # calc new size after resample image with given new spacing
-            # sitk.spacing has the opposite order than np.shape and tf.shape
-            # we use the numpy order z, y, x
-            old_spacing = list(reversed(sitk_img.GetSpacing()))
-            old_size = list(reversed(sitk_img.GetSize()))
-            if sitk_img.GetDimension() == 2:
-                x_s = (old_size[1] * old_spacing[1]) / self.SPACING[1]
-                y_s = (old_size[0] * old_spacing[0]) / self.SPACING[0]
-                new_size = (int(x_s), int(y_s))
-
-            elif sitk_img.GetDimension() == 3:
-                # round up
-                x_s = np.round((old_size[2] * old_spacing[2])) / self.SPACING[2]
-                y_s = np.round((old_size[1] * old_spacing[1])) / self.SPACING[1]
-                z_s = np.round((old_size[0] * old_spacing[0])) / self.SPACING[0]
-                # not necessary if x and y have the same shape
-                # z_s = self.DIM[0] #fill z with zeros slices or cut
-                z_s = max(self.DIM[0],
-                          z_s)  # z must fit in the network input, resample with spacing or min network input
-                new_size = (int(z_s), int(y_s), int(x_s))
-
-                # we can also resize with the resamplefilter from sitk
-                # this cuts the image on the bottom and right
-                # new_size = self.DIM
-            else:
-                raise ('dimension not supported: {}'.format(sitk_img.GetDimension()))
-
-            logging.debug('dimension: {}'.format(sitk_img.GetDimension()))
-
-            # resample the image to given spacing and size
-            sitk_img = resample_3D(sitk_img=sitk_img, size=(new_size), spacing=self.SPACING,
-                                   interpolate=sitk.sitkBSpline)
-            if self.MASKS:  # if y is a mask, interpolate with nearest neighbor
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size), spacing=self.SPACING,
-                                       interpolate=sitk.sitkNearestNeighbor)
-            else:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size), spacing=self.SPACING,
-                                       interpolate=sitk.sitkBSpline)
-
-        elif sitk_img.GetDimension() == 3:  # 3d data needs to be resampled in z direction
-            logging.debug(('resample in z direction'))
-            logging.debug('Size before resample: {}'.format(sitk_img.GetSize()))
-
-            size = sitk_img.GetSize()
-            spacing = sitk_img.GetSpacing()
-            logging.debug('spacing before resample: {}'.format(sitk_img.GetSpacing()))
-
-            # keep x and y size/spacing, just resample along z
-            new_size = (*size[:-1], self.DIM[0])
-            new_spacing = (*spacing[:-1], self.SPACING[0])  # spacing is in opposite order
-
-            sitk_img = resample_3D(sitk_img=sitk_img, size=(new_size), spacing=new_spacing,
-                                   interpolate=sitk.sitkBSpline)
-            if self.MASKS:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size), spacing=new_spacing,
-                                       interpolate=sitk.sitkNearestNeighbor)
-            else:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size), spacing=new_spacing,
-                                       interpolate=sitk.sitkBSpline)
-        logging.debug('Spacing after resample: {}'.format(sitk_img.GetSpacing()))
-        logging.debug('Size after resample: {}'.format(sitk_img.GetSize()))
-
-        # transform to nda for further processing
-        img_nda = sitk.GetArrayFromImage(sitk_img)
-        mask_nda = sitk.GetArrayFromImage(sitk_msk)
-
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
-        t1 = time()
-
-        img_nda = clip_quantile(img_nda, .999)
-        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
-
-        if not self.MASKS:  # yields the image two times for an autoencoder
-            mask_nda = clip_quantile(mask_nda, .999)
-            mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
-
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'clipped and {} normalized image:'.format(self.SCALER))
-
-        if self.AUGMENT_GRID:  # augment with grid transform from albumenation
-            # apply grid augmentation,
-            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
-            raise NotImplementedError
-            img_nda, mask_nda = grid_dissortion_2D_or_3D(img_nda, mask_nda, probabillity=0.8)
-            # img_nda, mask_nda = elastic_transoform_2D_or_3D(img_nda, mask_nda, probabillity=0.5)
-
-            self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'grid_augmented')
-            t1 = time()
-
-        if self.AUGMENT:  # augment data with albumentation
-            # use albumentation to apply random rotation scaling and shifts
-            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
-            raise NotImplementedError
-            img_nda, mask_nda = augmentation_compose_2D_or3D(img_nda, mask_nda, target_dim=self.DIM,
-                                                             probabillity=0.8)
-            self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'augmented')
-            t1 = time()
-
-        img_nda, mask_nda, resized_by = center_crop_or_resize_2d_or_3d(img_nda, mask_nda, self.DIM)
-
-        # transform the labels to binary channel masks
-        # if masks are given, otherwise keep image as it is (for vae models, masks == False)
-        if self.MASKS:
-            mask_nda = transform_to_binary_mask(mask_nda, self.MASK_VALUES)
-
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, resized_by)
-
-        if self.MASKS:
-            return img_nda[..., np.newaxis], mask_nda, i, ID, time() - t0
-        else:  # if second parameter is no mask,
-            return img_nda[..., np.newaxis], mask_nda[..., np.newaxis], i, ID, time() - t0
-
 class CycleMotionDataGenerator(DataGenerator):
     """
     yields ([AX], [AXtoSAX, AXtoSAXtoAX, m]) for cycle motion loss
@@ -664,8 +468,11 @@ class CycleMotionDataGenerator(DataGenerator):
     def __init__(self, x=None, y=None, config={}):
         super(CycleMotionDataGenerator, self).__init__(x=x, y=y, config=config)
 
+        # change this to support different folder names, this is hardcoded to not break with the BaseGenerator api
+        assert 'AX_3D' in x[0]
+        assert 'AX_to_SAX_3D' in y[0]
+
         self.X_SHAPE = np.empty((self.BATCHSIZE, *self.DIM, self.IMG_CHANNELS), dtype=np.float32)
-        self.Y_SHAPE = np.empty((self.BATCHSIZE, *self.DIM, self.IMG_CHANNELS), dtype=np.float32)
         self.MASKS = False
 
     def __data_generation__(self, list_IDs_temp):
@@ -679,7 +486,7 @@ class CycleMotionDataGenerator(DataGenerator):
 
         # Initialization
         x = np.empty_like(self.X_SHAPE) # ax
-        y = np.empty_like(self.Y_SHAPE) # axtosax
+        y = np.empty_like(self.X_SHAPE) # axtosax
         x2 = np.empty_like(self.X_SHAPE) # sax
         y2 = np.empty_like(self.X_SHAPE)  # saxtoax
         empty = np.empty_like(self.X_SHAPE)  # saxtoax modified
@@ -714,212 +521,136 @@ class CycleMotionDataGenerator(DataGenerator):
                                                                                        self.labels[ID]))
 
         logging.debug('Batchsize: {} preprocessing took: {:0.3f} sec'.format(self.BATCHSIZE, time() - t0))
-        if self.SINGLE_OUTPUT:
-            return x.astype(np.float32), None
-        else:
-            ident = np.eye(4, dtype=np.float32)[:3,:]
-            return tuple([[x.astype(np.float32), x2.astype(np.float32)],
+
+        ident = np.eye(4, dtype=np.float32)[:3,:]
+        return tuple([[x.astype(np.float32), x2.astype(np.float32)],
                   [y.astype(np.float32), y2.astype(np.float32), empty.astype(np.float32), empty.astype(np.float32),
                    empty.astype(np.float32), ident, ident]])
 
     def __preprocess_one_image__(self, i, ID):
 
         t0 = time()
+        # use the load_masked_img wrapper to enable masking of the images, not necessary for the TMI paper
         # load image
-        sitk_img = load_masked_img(sitk_img_f=self.images[ID], mask=self.MASKING_IMAGE,
+        sitk_ax = load_masked_img(sitk_img_f=self.images[ID], mask=self.MASKING_IMAGE,
                                    masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
-        # load mask or second image
-        sitk_msk = load_masked_img(sitk_img_f=self.labels[ID], mask=self.MASKING_IMAGE,
-                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD,
-                                   mask_labels=self.MASK_VALUES)
-        # load image
-        sax3d = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D_ISO', 'SAX_3D_ISO'), mask=self.MASKING_IMAGE,
+        # load ax2sax
+        sitk_ax2sax = load_masked_img(sitk_img_f=self.labels[ID], mask=self.MASKING_IMAGE,
                                    masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
-
-        # load image
-        saxtoax3d = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D_ISO', 'SAX_to_AX_3D_ISO_SHIFT'),
-                                mask=self.MASKING_IMAGE,
+        # load sax
+        sitk_sax = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D', 'SAX_3D'),
+                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
+        # load sax2ax
+        sitk_sax2ax = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D', 'SAX_to_AX_3D'),
                                 masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
 
-        self.__plot_state_if_debug__(sitk_img, sitk_msk, t0, 'raw')
+        self.__plot_state_if_debug__(sitk_ax, sitk_ax2sax, t0, 'raw')
         t1 = time()
-
-        self.__plot_state_if_debug__(sitk_img, sitk_msk, t1, 'cropped')
 
         if self.RESAMPLE:
 
             # calc new size after resample image with given new spacing
             # sitk.spacing has the opposite order than np.shape and tf.shape
             # we use the numpy order z, y, x
-            old_spacing_img = list(reversed(sitk_img.GetSpacing()))
-            old_size_img = list(reversed(sitk_img.GetSize()))  # after reverse: z, y, x
+            old_spacing_img = list(reversed(sitk_ax.GetSpacing()))
+            old_size_img = list(reversed(sitk_ax.GetSize()))  # after reverse: z, y, x
 
-            old_spacing_msk = list(reversed(sitk_msk.GetSpacing()))
-            old_size_msk = list(reversed(sitk_msk.GetSize()))  # after reverse: z, y, x
+            old_spacing_msk = list(reversed(sitk_ax2sax.GetSpacing()))
+            old_size_msk = list(reversed(sitk_ax2sax.GetSize()))  # after reverse: z, y, x
 
-            old_spacing_sax3d = list(reversed(sax3d.GetSpacing()))
-            old_size_sax3d = list(reversed(sax3d.GetSize()))  # after reverse: z, y, x
+            old_spacing_sax3d = list(reversed(sitk_sax.GetSpacing()))
+            old_size_sax3d = list(reversed(sitk_sax.GetSize()))  # after reverse: z, y, x
 
-            old_spacing_saxtoax3d = list(reversed(saxtoax3d.GetSpacing()))
-            old_size_saxtoax3d = list(reversed(saxtoax3d.GetSize()))  # after reverse: z, y, x
+            old_spacing_saxtoax3d = list(reversed(sitk_sax2ax.GetSpacing()))
+            old_size_saxtoax3d = list(reversed(sitk_sax2ax.GetSize()))  # after reverse: z, y, x
 
-            if sitk_img.GetDimension() == 2:
-                x_s_img = (old_size_img[1] * old_spacing_img[1]) / self.SPACING[1]
-                y_s_img = (old_size_img[0] * old_spacing_img[0]) / self.SPACING[0]
-                new_size_img = (int(np.round(x_s_img)), int(np.round(y_s_img)))
-
-                x_s_msk = (old_size_msk[1] * old_spacing_msk[1]) / self.SPACING[1]
-                y_s_msk = (old_size_msk[0] * old_spacing_msk[0]) / self.SPACING[0]
-                new_size_msk = (int(np.round(x_s_msk)), int(np.round(y_s_msk)))
-
-            elif sitk_img.GetDimension() == 3:
+            if sitk_ax.GetDimension() == 3:
                 # round up
                 x_s_img = (old_size_img[2] * old_spacing_img[2]) / self.SPACING[2]
                 y_s_img = (old_size_img[1] * old_spacing_img[1]) / self.SPACING[1]
                 z_s_img = (old_size_img[0] * old_spacing_img[0]) / self.SPACING[0]
-                #z_s_img = max(self.DIM[0],z_s_img)  # z must fit in the network input, resample with spacing or min network input
                 new_size_img = (int(np.round(x_s_img)), int(np.round(y_s_img)), int(np.round(z_s_img)))
 
                 x_s_msk = (old_size_msk[2] * old_spacing_msk[2]) / self.SPACING[2]
                 y_s_msk = (old_size_msk[1] * old_spacing_msk[1]) / self.SPACING[1]
                 z_s_msk = (old_size_msk[0] * old_spacing_msk[0]) / self.SPACING[0]
-                #z_s_msk = max(self.DIM[0],z_s_msk)  # z must fit in the network input, resample with spacing or min network input
                 new_size_msk = (int(np.round(x_s_msk)), int(np.round(y_s_msk)), int(np.round(z_s_msk)))
 
                 x_s_sax3d = (old_size_sax3d[2] * old_spacing_sax3d[2]) / self.SPACING[2]
                 y_s_sax3d = (old_size_sax3d[1] * old_spacing_sax3d[1]) / self.SPACING[1]
                 z_s_sax3d = (old_size_sax3d[0] * old_spacing_sax3d[0]) / self.SPACING[0]
-                #z_s_sax3d = max(self.DIM[0],z_s_sax3d)  # z must fit in the network input, resample with spacing or min network input
                 new_size_sax3d = (int(np.round(x_s_sax3d)), int(np.round(y_s_sax3d)), int(np.round(z_s_sax3d)))
 
                 x_s_saxtoax3d = (old_size_saxtoax3d[2] * old_spacing_saxtoax3d[2]) / self.SPACING[2]
                 y_s_saxtoax3d = (old_size_saxtoax3d[1] * old_spacing_saxtoax3d[1]) / self.SPACING[1]
                 z_s_saxtoax3d = (old_size_saxtoax3d[0] * old_spacing_saxtoax3d[0]) / self.SPACING[0]
-                #z_s_saxtoax3d = max(self.DIM[0],z_s_saxtoax3d)  # z must fit in the network input, resample with spacing or min network input
                 new_size_saxtoax3d = (int(np.round(x_s_saxtoax3d)), int(np.round(y_s_saxtoax3d)), int(np.round(z_s_saxtoax3d)))
 
-                # we can also resize with the resamplefilter from sitk
-                # this cuts the image on the bottom and right
-                # new_size = self.DIM
-            else:
-                raise NotImplementedError('dimension not supported: {}'.format(sitk_img.GetDimension()))
 
-            logging.debug('dimension: {}'.format(sitk_img.GetDimension()))
-            logging.debug('Size before resample: {}'.format(sitk_img.GetSize()))
+            else:
+                raise NotImplementedError('dimension not supported: {}'.format(sitk_ax.GetDimension()))
+
+            logging.debug('dimension: {}'.format(sitk_ax.GetDimension()))
+            logging.debug('Size before resample: {}'.format(sitk_ax.GetSize()))
 
             # resample the image to given spacing increase/decrease the size according to new spacing
-            sitk_img = resample_3D(sitk_img=sitk_img, size=new_size_img, spacing=list(reversed(self.SPACING)),
+            sitk_ax = resample_3D(sitk_img=sitk_ax, size=new_size_img, spacing=list(reversed(self.SPACING)),
                                    interpolate=sitk.sitkLinear)
 
             # resample the image to given spacing and size
-            sax3d = resample_3D(sitk_img=sax3d, size=new_size_sax3d, spacing=list(reversed(self.SPACING)),
+            sitk_sax = resample_3D(sitk_img=sitk_sax, size=new_size_sax3d, spacing=list(reversed(self.SPACING)),
                                    interpolate=sitk.sitkLinear)
 
             # resample the image to given spacing and size
-            saxtoax3d = resample_3D(sitk_img=saxtoax3d, size=new_size_saxtoax3d, spacing=list(reversed(self.SPACING)),
+            sitk_sax2ax = resample_3D(sitk_img=sitk_sax2ax, size=new_size_saxtoax3d, spacing=list(reversed(self.SPACING)),
                                    interpolate=sitk.sitkLinear)
-            if self.MASKS:  # if y is a mask, interpolate with nearest neighbor
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=new_size_msk, spacing=list(reversed(self.SPACING)),
-                                       interpolate=sitk.sitkNearestNeighbor)
-            else:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=new_size_msk, spacing=list(reversed(self.SPACING)),
+
+            sitk_ax2sax = resample_3D(sitk_img=sitk_ax2sax, size=new_size_msk, spacing=list(reversed(self.SPACING)),
                                        interpolate=sitk.sitkLinear)
 
-        elif sitk_img.GetDimension() == 3:  # 3d data needs to be resampled/padded at least in z-direction
-            logging.debug(('resample in z direction'))
-            logging.debug('Size before resample: {}'.format(sitk_img.GetSize()))
+        elif sitk_ax.GetDimension() == 3:  # 3d data needs to be resampled/padded at least in z-direction
+            # the ax2sax domain transfer can only work for resampled data
+            logging.error('No resampling applied, this methid might not work as expected. Maybe the data is already resampled')
 
-            size_img = sitk_img.GetSize()
-            spacing_img = sitk_img.GetSpacing()
 
-            size_msk = sitk_msk.GetSize()
-            spacing_msk = sitk_msk.GetSpacing()
-
-            size_sax3d = sax3d.GetSize()
-            spacing_sax3d = sax3d.GetSpacing()
-
-            size_saxtoax3d = saxtoax3d.GetSize()
-            spacing_saxtoax3d = saxtoax3d.GetSpacing()
-            logging.debug('spacing before resample: {}'.format(sitk_img.GetSpacing()))
-
-            # keep x and y size/spacing, just extend the size in z, keep spacing of z --> pad with zero along
-            new_size_img = (
-            *size_img[:-1], self.DIM[0])  # take x and y from the current sitk, extend by z, creates x,y,z
-            new_spacing_img = (*spacing_img[:-1], self.SPACING[0])  # spacing is in opposite order
-
-            new_size_msk = (
-            *size_msk[:-1], self.DIM[0])  # take x and y from the current sitk, extend by z, creates x,y,z
-            new_spacing_msk = (*spacing_msk[:-1], self.SPACING[0])  # spacing is in opposite order
-
-            new_size_sax3d = (
-            *size_sax3d[:-1], self.DIM[0])  # take x and y from the current sitk, extend by z, creates x,y,z
-            new_spacing_sax3d = (*spacing_sax3d[:-1], self.SPACING[0])  # spacing is in opposite order
-
-            new_size_saxtoax3d = (
-            *size_saxtoax3d[:-1], self.DIM[0])  # take x and y from the current sitk, extend by z, creates x,y,z
-            new_spacing_saxtoax3d = (*spacing_saxtoax3d[:-1], self.SPACING[0])  # spacing is in opposite order
-
-            sitk_img = resample_3D(sitk_img=sitk_img, size=(new_size_img), spacing=new_spacing_img,
-                                   interpolate=sitk.sitkLinear)
-            sax3d = resample_3D(sitk_img=sax3d, size=(new_size_sax3d), spacing=new_spacing_sax3d,
-                                interpolate=sitk.sitkLinear)
-            saxtoax3d = resample_3D(sitk_img=saxtoax3d, size=(new_size_saxtoax3d), spacing=new_spacing_saxtoax3d,
-                                    interpolate=sitk.sitkLinear)
-            if self.MASKS:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size_msk), spacing=new_spacing_msk,
-                                       interpolate=sitk.sitkNearestNeighbor)
-            else:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size_msk), spacing=new_spacing_msk,
-                                       interpolate=sitk.sitkLinear)
-
-        logging.debug('Spacing after resample: {}'.format(sitk_img.GetSpacing()))
-        logging.debug('Size after resample: {}'.format(sitk_img.GetSize()))
+        logging.debug('Spacing after resample: {}'.format(sitk_ax.GetSpacing()))
+        logging.debug('Size after resample: {}'.format(sitk_ax.GetSize()))
 
         # transform to nda for further processing
-        img_nda = sitk.GetArrayFromImage(sitk_img)
-        sax3d = sitk.GetArrayFromImage(sax3d)
-        saxtoax3d = sitk.GetArrayFromImage(saxtoax3d)
-        mask_nda = sitk.GetArrayFromImage(sitk_msk)
+        nda_ax = sitk.GetArrayFromImage(sitk_ax)
+        nda_sax = sitk.GetArrayFromImage(sitk_sax)
+        nda_sax2ax = sitk.GetArrayFromImage(sitk_sax2ax)
+        nda_ax2sax = sitk.GetArrayFromImage(sitk_ax2sax)
 
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
+        self.__plot_state_if_debug__(nda_ax, t1, 'resampled')
 
         if self.AUGMENT_GRID:  # augment with grid transform from albumenation
-            # apply grid augmentation,
-            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
+            # TODO: implement augmentation, remember params and apply to the other images
             raise NotImplementedError
 
         if self.AUGMENT:  # augment data with albumentation
-            # use albumentation to apply random rotation scaling and shifts
-            # TODO: implement augmentation, remember params and apply to image1, image2 and image3
+            # TODO: implement augmentation, remember params and apply to the other images
             raise NotImplementedError
 
-        img_nda, mask_nda, resized_by = center_crop_or_pad_2d_or_3d(img_nda, mask_nda, self.DIM)
-        sax3d, saxtoax3d, resized_by = center_crop_or_pad_2d_or_3d(sax3d, saxtoax3d, self.DIM)
+        nda_ax, nda_ax2sax,nda_sax, nda_sax2ax = map(lambda x: pad_and_crop(x, target_shape=self.DIM),
+                                                     [nda_ax, nda_ax2sax,nda_sax, nda_sax2ax])
+
+        self.__plot_state_if_debug__(nda_ax, nda_ax2sax, t1, 'crop and pad')
 
         # clipping and normalise after cropping
-        img_nda = clip_quantile(img_nda, .999)
-        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
+        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: clip_quantile(x, .999),
+                                                      [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
-        sax3d = clip_quantile(sax3d, .999)
-        sax3d = normalise_image(sax3d, normaliser=self.SCALER)
+        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: normalise_image(x, normaliser=self.SCALER),
+                                                      [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
-        saxtoax3d = clip_quantile(saxtoax3d, .999)
-        saxtoax3d = normalise_image(saxtoax3d, normaliser=self.SCALER)
+        self.__plot_state_if_debug__(nda_ax, nda_ax2sax, t1, 'clipped and normalized')
 
-        # transform the labels to binary channel masks
-        # if masks are given, otherwise keep image as it is (for vae models, masks == False)
-        if self.MASKS:
-            mask_nda = transform_to_binary_mask(mask_nda, self.MASK_VALUES)
-        else: # mask is an image
-            mask_nda = clip_quantile(mask_nda, .999)
-            mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
-
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, resized_by)
-
-        if self.MASKS:
-            return img_nda[..., np.newaxis], mask_nda, i, ID, time() - t0
-        else:  # if second parameter is no mask,
-            return img_nda[..., np.newaxis], mask_nda[..., np.newaxis], sax3d[..., np.newaxis], saxtoax3d[..., np.newaxis], i, ID, time() - t0
+        return nda_ax[..., np.newaxis], \
+               nda_ax2sax[..., np.newaxis], \
+               nda_sax[..., np.newaxis], \
+               nda_sax2ax[..., np.newaxis], \
+               i, ID, time() - t0
 
 class MotionDataGenerator(DataGenerator):
     """

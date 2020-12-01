@@ -12,7 +12,7 @@ def load_config(config_file_path, load=False):
 
     """
     Load a config file
-    Try to
+    Try to load the corresponding model
     :param config_file_path: (string) path to the config json file
     :param load: (bool), whether the model and config related files should be loaded
     :return: a dictionary with {'config': cfg, 'model':tf.keras.model}
