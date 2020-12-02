@@ -1,4 +1,7 @@
 """
+Modifications by Sven Koehler (sven.koehler@med.uni-heidelberg.de)
+Modified code from the original author:
+Modifications: added HD, handling of zero scores, supports nrrd files. etc.
 author: Clément Zotti (clement.zotti@usherbrooke.ca)
 date: April 2017
 
@@ -38,7 +41,10 @@ from glob import glob
 import time
 import re
 import argparse
-import nibabel as nib
+try:
+    import nibabel as nib
+except Exception as e:
+    print('nibabel not installed, if needed, please install with "pip install nibabel"')
 import pandas as pd
 from medpy.metric.binary import hd, dc
 import numpy as np

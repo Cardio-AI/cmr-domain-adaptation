@@ -1,7 +1,8 @@
 3D-MRI-Domain-Adoption
 ==============================
 
-This repository includes the python helper function, model definition and trainings notebooks to trainn a tensorflow deep learning model, which transforms AX CMR images into the well known SAX domain.
+This repository includes the code and notebooks for an unsupervised AX--> SAX transformation model.
+The repository environment is saved as conda environment file. The DL graph is build on tensorflow.
 
 Overview:
 --------
@@ -27,7 +28,6 @@ Project Structure
     │   ├── Evaluate       <- Evaluate the model performance, create plots
     │   ├── Predict        <- Use the models and predict the segmentation
     │   ├── Train          <- Train a new model
-    │   └── Test_IO        <- IO tests
     │   └── Test_Models    <- Tensorflow functional or subclassing tests
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
@@ -63,14 +63,33 @@ Setup native with OSX or Ubuntu
 ### Local setup
 - Clone repository
 ```
-git clone %reponame%
-cd %reponame%
+git clone %repo-name%
+cd %repo-name%
 ```
-- Create a virtual environment either via virtualenv or conda
+- Create a conda environment from environment.yaml (environment name will be ax2sax)
 ```
-make environment
+conda env create --file environment.yaml
 ```
-- Install dependencies via requirements.txt
+
+- Activate environment
 ```
-make requirement
+conda activate ax2sax
 ```
+- Install a helper to automatically change the working directory to the project root directory
+```
+pip install --extra-index-url https://test.pypi.org/simple/ ProjectRoot
+```
+- Create a jupyter kernel from the activated environment, this kernel will be visible in the jupyter lab
+```
+python -m ipykernel install --user --name ax2sax --display-name "ax2sax kernel"
+```
+
+
+
+
+
+
+### The repository is split into /notebooks and python /src modules
+
+All interaction (load data, train load models, predict on held out splits) are summarized into one notebook /Notebooks/Train/3D_AX_to_SAX_Rotation_cycle.ipynb.
+The model and layer definitions are within /src/models. The transformation module is copyed and modified from the neuron project, which is also part of the current Voxelmorph approach (https://github.com/voxelmorph/voxelmorph).

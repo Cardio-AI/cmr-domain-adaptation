@@ -1,4 +1,4 @@
-name: test
+name: ax2sax
 channels:
   - defaults
 dependencies:
@@ -49,5 +49,5 @@ dependencies:
     - sklearn==0.0
     - tensorboard==2.3.0
     - tensorflow==2.3.0
-prefix: /home/sven/anaconda3/envs/test
+prefix: /home/sven/anaconda3/envs/ax2sax
 
