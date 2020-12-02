@@ -23,12 +23,6 @@ import itertools
 import numpy as np
 from pprint import pformat
 
-#import pytools.patchlib as pl
-#import pytools.timer as timer
-
-# local imports
-#import pynd.ndutils as nd
-
 # often changed file
 #from imp import reload
 from tensorflow import keras
@@ -884,7 +878,7 @@ def copy_model_weights(src_model, dst_model):
         dst_model: destination keras model to copy to
     """
 
-    for layer in tqdm(dst_model.layers):
+    for layer in dst_model.layers:
         try:
             wts = src_model.get_layer(layer.name).get_weights()
             layer.set_weights(wts)
@@ -1077,7 +1071,7 @@ def predict_volume_stack(models,
     nb_batches = ((nb_patches - 1) // batch_size) + 1
 
     # go through the patches
-    batch_gen = tqdm(range(nb_batches)) if verbose else range(nb_batches)
+    batch_gen = range(nb_batches) if verbose else range(nb_batches)
     for batch_idx in batch_gen:
         sample = next(data_generator)
         nb_vox = np.prod(sample[1].shape[1:-1])

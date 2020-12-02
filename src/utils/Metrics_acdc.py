@@ -1,7 +1,7 @@
 """
 Modifications by Sven Koehler (sven.koehler@med.uni-heidelberg.de)
-Modified code from the original author:
 Modifications: added HD, handling of zero scores, supports nrrd files. etc.
+Modified code from the original author:
 author: Clément Zotti (clement.zotti@usherbrooke.ca)
 date: April 2017
 

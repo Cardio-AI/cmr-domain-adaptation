@@ -276,32 +276,27 @@ class DataGenerator(BaseGenerator):
 
             old_spacing_msk = list(reversed(sitk_msk.GetSpacing()))
             old_size_msk = list(reversed(sitk_msk.GetSize())) # after reverse: z, y, x
+
             if sitk_img.GetDimension() == 2:
                 x_s_img = (old_size_img[1] * old_spacing_img[1]) / self.SPACING[1]
                 y_s_img = (old_size_img[0] * old_spacing_img[0]) / self.SPACING[0]
-                new_size_img = (int(x_s_img), int(y_s_img))
+                new_size_img = (int(np.round(x_s_img)), int(np.round(y_s_img)))
 
                 x_s_msk = (old_size_msk[1] * old_spacing_msk[1]) / self.SPACING[1]
                 y_s_msk = (old_size_msk[0] * old_spacing_msk[0]) / self.SPACING[0]
-                new_size_msk = (int(x_s_msk), int(y_s_msk))
+                new_size_msk = (int(np.round(x_s_msk)), int(np.round(y_s_msk)))
 
             elif sitk_img.GetDimension() == 3:
                 # round up
                 x_s_img = np.round((old_size_img[2] * old_spacing_img[2])) / self.SPACING[2]
                 y_s_img = np.round((old_size_img[1] * old_spacing_img[1])) / self.SPACING[1]
                 z_s_img = np.round((old_size_img[0] * old_spacing_img[0])) / self.SPACING[0]
-                # not necessary if x and y have the same shape
-                #z_s = self.DIM[0] #fill z with zeros slices or cut
-                #z_s_img = max(self.DIM[0], z_s_img) # z must fit in the network input, resample with spacing or min network input
-                new_size_img = (int(x_s_img), int(y_s_img), int(z_s_img))
+                new_size_img = (int(np.round(x_s_img)), int(np.round(y_s_img)), int(np.round(z_s_img)))
 
                 x_s_msk = np.round((old_size_msk[2] * old_spacing_msk[2])) / self.SPACING[2]
                 y_s_msk = np.round((old_size_msk[1] * old_spacing_msk[1])) / self.SPACING[1]
                 z_s_msk = np.round((old_size_msk[0] * old_spacing_msk[0])) / self.SPACING[0]
-                # not necessary if x and y have the same shape
-                #z_s = self.DIM[0] #fill z with zeros slices or cut
-                #z_s_msk = max(self.DIM[0], z_s_msk) # z must fit in the network input, resample with spacing or min network input
-                new_size_msk = (int(x_s_msk), int(y_s_msk), int(z_s_msk))
+                new_size_msk = (int(np.round(x_s_msk)), int(np.round(y_s_msk)), int(np.round(z_s_msk)))
 
                 # we can also resize with the resamplefilter from sitk
                 # this cuts the image at the bottom and right
@@ -382,7 +377,8 @@ class DataGenerator(BaseGenerator):
             self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'augmented')
             t1 = time()
 
-        img_nda, mask_nda, resized_by = center_crop_or_pad_2d_or_3d(img_nda, mask_nda, self.DIM)
+        img_nda, mask_nda = map(lambda x: pad_and_crop(x, target_shape=self.DIM),
+                                                      [img_nda, mask_nda])
 
         img_nda = clip_quantile(img_nda, .9999)
         img_nda = normalise_image(img_nda, normaliser=self.SCALER)
@@ -396,7 +392,7 @@ class DataGenerator(BaseGenerator):
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
             mask_nda = mask_nda[..., np.newaxis]
 
-        self.__plot_state_if_debug__(img_nda, mask_nda, t1, resized_by)
+        self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'after crop')
 
         return img_nda[..., np.newaxis], mask_nda, i, ID, time() - t0
 
