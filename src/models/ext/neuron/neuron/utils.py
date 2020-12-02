@@ -21,7 +21,6 @@ import itertools
 
 # third party imports
 import numpy as np
-from tqdm import tqdm_notebook as tqdm
 from pprint import pformat
 
 #import pytools.patchlib as pl
