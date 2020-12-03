@@ -5,6 +5,19 @@ import subprocess, re, os, sys
 # Nvidia-smi GPU memory parsing.
 # Tested on nvidia-smi 370.23
 
+import linecache
+import sys
+def PrintException():
+    exc_type, exc_obj, tb = sys.exc_info()
+    f = tb.tb_frame
+    lineno = tb.tb_lineno
+    filename = f.f_code.co_filename
+    linecache.checkcache(filename)
+    line = linecache.getline(filename, lineno, f.f_globals)
+    print('EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj))
+
+
+
 def run_command(cmd):
     """Run command, return output as string."""
     

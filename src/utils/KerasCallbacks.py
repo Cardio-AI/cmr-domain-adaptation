@@ -13,7 +13,6 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 from src.visualization.Visualize import plot_3d_vol
 from src.visualization.Visualize import show_slice_transparent as show_slice
 from src.utils.Utils_io import ensure_dir
-from src.data.Generators import get_samples
 from src.data.Preprocess import normalise_image
 
 

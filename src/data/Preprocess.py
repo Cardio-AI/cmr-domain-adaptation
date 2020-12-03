@@ -726,10 +726,10 @@ def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
     Center pad and crop a np.ndarray with any shape to a given target shape
     Parameters
     ----------
-    ndarray :
-    target_shape :
+    ndarray : numpy.ndarray of any shape
+    target_shape : must have the same length as ndarray.ndim
 
-    Returns
+    Returns np.ndarray with each axis either pad or crop
     -------
 
     """

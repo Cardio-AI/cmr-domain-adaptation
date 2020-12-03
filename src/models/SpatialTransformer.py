@@ -86,7 +86,7 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
 
     - Loss_focus =
         # ignore background, we want to maximize the number of captured ventricle voxel
-        y_pred = y_pred[...,1:]
+        y_pred = y_pred[...,1:] if background given by the U-Net predictions
         y_pred = tf.cast(y_pred, dtype=tf.float32)
         # keep only the highest prob
         sum_bigger_than = tf.reduce_max(y_pred, axis=-1)
