@@ -1,4 +1,4 @@
-3D-MRI-Domain-Adoption
+3D-MRI-Domain-Adaptation
 ==============================
 
 This repository includes the code and notebooks for an unsupervised AX--> SAX transformation model.
