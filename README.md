@@ -4,6 +4,8 @@
 This repository includes the code and notebooks for an unsupervised AX--> SAX transformation model.
 The repository environment is saved as conda environment file. The DL graph is build on tensorflow.
 
+![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax2sax_learning_example_.mp4 "learning progress") 
+
 Overview:
 --------
 Figure of the final pipeline
