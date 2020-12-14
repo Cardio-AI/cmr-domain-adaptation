@@ -137,9 +137,6 @@ def create_affine_cycle_transformer_model(config, metrics=None, networkname='aff
         min_unet_probability = config.get('MIN_UNET_PROBABILITY', 0.9) # sum the foreground voxels with a prob higher than
         use_mask2ax_prob = config.get('USE_SAX2AX_PROB', True) # otherwise use the SAX probability
 
-
-
-
         # increase the dropout through the layer depth
         dropouts = list(np.linspace(drop_1, drop_3, depth))
         dropouts = [round(i, 1) for i in dropouts]

@@ -725,6 +725,9 @@ def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
     """
     Center pad and crop a np.ndarray with any shape to a given target shape
     Parameters
+    Pad and crop must be the complementary
+    pad = floor(x),floor(x)+1
+    crop = floor(x)+1, floor(x)
     ----------
     ndarray : numpy.ndarray of any shape
     target_shape : must have the same length as ndarray.ndim
@@ -741,8 +744,10 @@ def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
     diff = ndarray.shape - target_shape
 
     # divide into summands to work with odd numbers
-    d = list(
-        (int(x // 2), int(x // 2)) if x % 2 == 0 else (int(np.floor(x / 2)), int(np.floor(x / 2) + 1)) for x in diff)
+    # take the same numbers for left or right padding/cropping if the difference is dividable by 2
+    # else take floor(x),floor(x)+1 for PAD (diff<0)
+    # else take floor(x)+1, floor(x) for CROP (diff>0)
+    d = list((int(x // 2), int(x // 2)) if x % 2 == 0 else (int(np.floor(x / 2)), int(np.floor(x / 2) + 1)) if x<0 else (int(np.floor(x / 2)+1), int(np.floor(x / 2))) for x in diff)
     # replace the second slice parameter if it is None, which slice until end of ndarray
     d = list((abs(x), abs(y)) if y != 0 else (abs(x), None) for x, y in d)
     # create a bool list, negative numbers --> pad, else --> crop
@@ -1014,3 +1019,367 @@ def normalise_image(img_nda, normaliser='minmax'):
                             with_scaling=True).fit_transform(img_nda)
     else:
         return (img_nda - img_nda.min()) / (img_nda.max() - img_nda.min() + sys.float_info.epsilon)
+
+def get_metadata_maybe(key, sitk_img, default='not_found'):
+    try:
+        value = sitk_img.GetMetaData(key)
+    except Exception as e:
+        #logging.debug('key not found: {}, {}'.format(key, e))
+        value = default
+        pass
+
+    return value
+import matplotlib.pyplot as plt
+def show_3D(sitk_img):
+    img_array = sitk.GetArrayFromImage(sitk_img)
+    max_depth = img_array.shape[0]
+    fig = plt.figure(figsize=(30,max_depth))
+    for i in range(max_depth):
+        fig.add_subplot(1,max_depth,i+1)
+        plt.imshow(img_array[i,:,:])
+        plt.axis('off')
+
+def Image3D_from_Time(sitk_img,time):
+    img_array = sitk.GetArrayFromImage(sitk_img)
+    sitk_array_3D = img_array[time-1,:,:,:]
+    new_sitk_img = sitk.GetImageFromArray(sitk_array_3D)
+    return new_sitk_img
+
+def ensure_dir(file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+#returns img of only one label
+def get_single_label_img(sitk_img, label):
+    img_array = sitk.GetArrayFromImage(sitk_img)
+    label_array = (img_array == label).astype(int)
+    label_array = label_array * 100
+    label_img = sitk.GetImageFromArray(label_array)
+    label_img.CopyInformation(sitk_img)
+    return label_img
+
+#returns resampled img1 by referncing img2
+def resample_img(sitk_img1, sitk_img2):
+    resampler = sitk.ResampleImageFilter()
+    resampler.SetReferenceImage(sitk_img2)
+    resampled_img = resampler.Execute(sitk_img1)
+    return resampled_img
+
+#returns resampled_img back to normal label
+def convert_back_to_label(sitk_img, label):
+    img_array = sitk.GetArrayFromImage(sitk_img)
+    label_array = (img_array > 25).astype(int)
+    label_array = label_array * label
+    label_img = sitk.GetImageFromArray(label_array)
+    label_img.CopyInformation(sitk_img)
+    return label_img
+
+#returns resampled_img back to normal label with percentage
+def advanced_convert_back_to_label(sitk_img, label, percentage):
+    img_array = sitk.GetArrayFromImage(sitk_img)
+    percent_array = img_array.flatten()
+    percent_array = percent_array[percent_array > 0]
+    try:
+        threshold = - np.percentile(percent_array*-1,q=percentage)
+    except IndexError:
+        print("IndexError")
+        threshold = 50
+    label_array = (img_array >= threshold).astype(int)
+    label_array = label_array * label
+    label_img = sitk.GetImageFromArray(label_array)
+    label_img.CopyInformation(sitk_img)
+    return label_img
+
+#returns all labels added and with priority from label 3 to 1
+def add_labels(label_array1,label_array2,label_array3):
+    final_array = label_array3
+    temp_array = final_array + label_array2
+    #if you add the label, there is only a 2 if there was a 0 there before, so now oferwriting
+    temp_array = (temp_array == 2).astype(int)
+    temp_array = temp_array * 2
+    final_array = final_array + temp_array
+    temp_array = final_array + label_array1
+    temp_array = (temp_array == 1).astype(int)
+    temp_array = temp_array * 1
+    final_array = final_array + temp_array
+    return final_array
+
+
+def add_labels_max_thres(label_array1, label_array2, label_array3, threshold):
+    max_label_1_2_array = np.maximum(label_array1, label_array2)
+    max_label_2_3_array = np.maximum(label_array2, label_array3)
+    max_label_array = np.maximum(max_label_1_2_array, max_label_2_3_array)
+    thres_label_array = (max_label_array >= threshold).astype(int)
+    max_label_array = thres_label_array * max_label_array
+
+    max_label_array1 = label_array1 * np.equal(max_label_array, label_array1).astype(int)
+    # max_label_array1 =  (max_label_array1 > threshold).astype(int) * 1
+    max_label_array1 = max_label_array1.astype(bool).astype(int) * 1
+    max_label_array2 = label_array2 * np.equal(max_label_array, label_array2).astype(int)
+    # max_label_array2 =  (max_label_array2 > threshold).astype(int) * 2
+    max_label_array2 = max_label_array2.astype(bool).astype(int) * 2
+    max_label_array3 = label_array3 * np.equal(max_label_array, label_array3).astype(int)
+    # max_label_array3 =  (max_label_array3 > threshold).astype(int) * 3
+    max_label_array3 = max_label_array3.astype(bool).astype(int) * 3
+
+    return add_labels(max_label_array1, max_label_array2, max_label_array3)
+
+
+# reutrns resampled img1 by referencing img2
+def resample_label_img(sitk_img1, sitk_img2):
+    label1_img1 = get_single_label_img(sitk_img1, 1)
+    label2_img1 = get_single_label_img(sitk_img1, 2)
+    label3_img1 = get_single_label_img(sitk_img1, 3)
+
+    resampled_label1 = resample_img(label1_img1, sitk_img2)
+    resampled_label2 = resample_img(label2_img1, sitk_img2)
+    resampled_label3 = resample_img(label3_img1, sitk_img2)
+    resampled_label1 = convert_back_to_label(resampled_label1, 1)
+    resampled_label2 = convert_back_to_label(resampled_label2, 2)
+    resampled_label3 = convert_back_to_label(resampled_label3, 3)
+
+    resampled_array1 = sitk.GetArrayFromImage(resampled_label1)
+    resampled_array2 = sitk.GetArrayFromImage(resampled_label2)
+    resampled_array3 = sitk.GetArrayFromImage(resampled_label3)
+    resampled_array = add_labels(resampled_array1, resampled_array2, resampled_array3)
+    resampled_img = sitk.GetImageFromArray(resampled_array)
+    resampled_img.CopyInformation(resampled_label1)
+    return resampled_img
+
+
+# reutrns resampled img1 by referencing img2 with percentage
+def percentage_resample_label_img(sitk_img1, sitk_img2, percentage):
+    label1_img1 = get_single_label_img(sitk_img1, 1)
+    label2_img1 = get_single_label_img(sitk_img1, 2)
+    label3_img1 = get_single_label_img(sitk_img1, 3)
+
+    resampled_label1 = resample_img(label1_img1, sitk_img2)
+    resampled_label2 = resample_img(label2_img1, sitk_img2)
+    resampled_label3 = resample_img(label3_img1, sitk_img2)
+    resampled_label1 = advanced_convert_back_to_label(resampled_label1, 1, percentage)
+    resampled_label2 = advanced_convert_back_to_label(resampled_label2, 2, percentage)
+    resampled_label3 = advanced_convert_back_to_label(resampled_label3, 3, percentage)
+
+    resampled_array1 = sitk.GetArrayFromImage(resampled_label1)
+    resampled_array2 = sitk.GetArrayFromImage(resampled_label2)
+    resampled_array3 = sitk.GetArrayFromImage(resampled_label3)
+    resampled_array = add_labels(resampled_array1, resampled_array2, resampled_array3)
+    resampled_img = sitk.GetImageFromArray(resampled_array)
+    resampled_img.CopyInformation(resampled_label1)
+    return resampled_img
+
+
+# reutrns resampled img1 by referencing img2 with percentage
+def max_thres_resample_label_img(sitk_img1, sitk_img2, threshold):
+    label1_img1 = get_single_label_img(sitk_img1, 1)
+    label2_img1 = get_single_label_img(sitk_img1, 2)
+    label3_img1 = get_single_label_img(sitk_img1, 3)
+
+    resampled_label1 = resample_img(label1_img1, sitk_img2)
+    resampled_label2 = resample_img(label2_img1, sitk_img2)
+    resampled_label3 = resample_img(label3_img1, sitk_img2)
+
+    resampled_array1 = sitk.GetArrayFromImage(resampled_label1)
+    resampled_array2 = sitk.GetArrayFromImage(resampled_label2)
+    resampled_array3 = sitk.GetArrayFromImage(resampled_label3)
+
+    resampled_array = add_labels_max_thres(resampled_array1, resampled_array2, resampled_array3, threshold)
+    resampled_img = sitk.GetImageFromArray(resampled_array)
+    resampled_img.CopyInformation(resampled_label1)
+    return resampled_img
+
+
+# returns resampled img1 by referencing img2 with percentage.
+def max_thres_resample2_label_img(sitk_img1, sitk_img2, threshold):
+    label1_img1 = get_single_label_img(sitk_img1, 1)
+    label2_img1 = get_single_label_img(sitk_img1, 2)
+    label3_img1 = get_single_label_img(sitk_img1, 3)
+
+    resampled_label1 = resample_direcion_origin_spacing(label1_img1, sitk_img2, interpolate=sitk.sitkLinear)
+    resampled_label2 = resample_direcion_origin_spacing(label2_img1, sitk_img2, interpolate=sitk.sitkLinear)
+    resampled_label3 = resample_direcion_origin_spacing(label3_img1, sitk_img2, interpolate=sitk.sitkLinear)
+
+    resampled_array1 = sitk.GetArrayFromImage(resampled_label1)
+    resampled_array2 = sitk.GetArrayFromImage(resampled_label2)
+    resampled_array3 = sitk.GetArrayFromImage(resampled_label3)
+
+    resampled_array = add_labels_max_thres(resampled_array1, resampled_array2, resampled_array3, threshold)
+    resampled_img = sitk.GetImageFromArray(resampled_array)
+    resampled_img = sitk.Cast(resampled_img, sitk.sitkUInt8)
+    resampled_img.CopyInformation(resampled_label1)
+    return resampled_img
+
+def resample_direcion_origin_spacing(sitk_img, reference_sitk, interpolate=sitk.sitkLinear):
+    """
+    Resample a sitk img, copy direction, origin and spacing of the reference image
+    Keep the size (resolution) of the target image
+    :param sitk_img: sitk.Image
+    :param reference_sitk: sitk.Image
+    :param interpolate: fn
+    :return:
+    """
+    resampler = sitk.ResampleImageFilter()
+    resampler.SetOutputSpacing(reference_sitk.GetSpacing())
+    resampler.SetInterpolator(interpolate)
+    resampler.SetOutputDirection(reference_sitk.GetDirection())
+    resampler.SetOutputOrigin(reference_sitk.GetOrigin())
+    resampler.SetSize(reference_sitk.GetSize())
+    resampled = resampler.Execute(sitk_img)
+    # copy metadata
+    for key in reference_sitk.GetMetaDataKeys():
+        resampled.SetMetaData(key, get_metadata_maybe(reference_sitk, key))
+    return resampled
+
+
+# reutrns resampled img1 by referencing img2 with percentage, modified by sven !!!
+def max_thres_resample2_iso_label_img(sitk_img1, threshold, spacing_=(1.5, 1.5, 1.5), file_path='temp.nrrd',
+                                      interpol=sitk.sitkLinear):
+    from src.visualization.Visualize import show_2D_or_3D
+    from src.data.Postprocess import clean_3d_prediction_3d_cc
+    import numpy as np
+    import cv2
+    import scipy
+    debug = False
+
+    label1_img1 = get_single_label_img(sitk_img1, 1)
+    label2_img1 = get_single_label_img(sitk_img1, 2)
+    label3_img1 = get_single_label_img(sitk_img1, 3)
+
+    resampled_label1, _ = transform_to_isotrop_voxels(label1_img1, interpolate=interpol, spacing_=spacing_)
+    resampled_label2, _ = transform_to_isotrop_voxels(label2_img1, interpolate=interpol, spacing_=spacing_)
+    resampled_label3, _ = transform_to_isotrop_voxels(label3_img1, interpolate=interpol, spacing_=spacing_)
+
+    resampled_array1 = sitk.GetArrayFromImage(resampled_label1)
+    resampled_array2 = sitk.GetArrayFromImage(resampled_label2)
+    resampled_array3 = sitk.GetArrayFromImage(resampled_label3)
+
+    kernel = np.ones((5, 5, 7), np.uint8)
+    kernel_small = np.ones((3, 3, 3), np.uint8)
+    # maybe use a bigger/smaller kernel?
+
+    # close holes, smooth in z,x,y
+    resampled_array1 = scipy.ndimage.morphology.grey_closing(resampled_array1, structure=kernel, mode='constant')
+    resampled_array2 = scipy.ndimage.morphology.grey_closing(resampled_array2, structure=kernel, mode='constant')
+    resampled_array3 = scipy.ndimage.morphology.grey_closing(resampled_array3, structure=kernel, mode='constant')
+
+    resampled_array1 = scipy.ndimage.morphology.grey_closing(resampled_array1, structure=kernel_small, mode='constant')
+    resampled_array2 = scipy.ndimage.morphology.grey_closing(resampled_array2, structure=kernel_small, mode='constant')
+    resampled_array3 = scipy.ndimage.morphology.grey_closing(resampled_array3, structure=kernel_small, mode='constant')
+
+    if debug: show_2D_or_3D(resampled_array1[::10])
+    plt.show()
+    if debug: show_2D_or_3D(resampled_array2[::10])
+    plt.show()
+    if debug: show_2D_or_3D(resampled_array3[::10])
+    plt.show()
+
+    resampled_array = add_labels_max_thres(resampled_array1, resampled_array2, resampled_array3, threshold)
+
+    resampled_img = sitk.GetImageFromArray(resampled_array)
+    resampled_img = sitk.Cast(resampled_img, sitk.sitkUInt8)
+    resampled_img.CopyInformation(resampled_label1)
+    return resampled_img, file_path
+
+
+# reutrns resampled img1 by referencing img2 with percentage, original from the TMI paper!
+def max_thres_resample2_iso_label_img_original(sitk_img1, threshold):
+    from src.visualization.Visualize import show_2D_or_3D
+    debug = True
+
+    label1_img1 = get_single_label_img(sitk_img1, 1)
+    label2_img1 = get_single_label_img(sitk_img1, 2)
+    label3_img1 = get_single_label_img(sitk_img1, 3)
+
+    resampled_label1 = transform_to_isotrop_voxels(label1_img1, interpolate=sitk.sitkLinear, spacing_=(1.5, 1.5, 1.5))
+    resampled_label2 = transform_to_isotrop_voxels(label2_img1, interpolate=sitk.sitkLinear, spacing_=(1.5, 1.5, 1.5))
+    resampled_label3 = transform_to_isotrop_voxels(label3_img1, interpolate=sitk.sitkLinear, spacing_=(1.5, 1.5, 1.5))
+
+    resampled_array1 = sitk.GetArrayFromImage(resampled_label1)
+    resampled_array2 = sitk.GetArrayFromImage(resampled_label2)
+    resampled_array3 = sitk.GetArrayFromImage(resampled_label3)
+
+    if debug: show_2D_or_3D(resampled_array1[::10])
+    plt.show()
+    if debug: show_2D_or_3D(resampled_array2[::10])
+    plt.show()
+    if debug: show_2D_or_3D(resampled_array3[::10])
+    plt.show()
+
+    resampled_array = add_labels_max_thres(resampled_array1, resampled_array2, resampled_array3, threshold)
+    resampled_img = sitk.GetImageFromArray(resampled_array)
+    resampled_img = sitk.Cast(resampled_img, sitk.sitkUInt8)
+    resampled_img.CopyInformation(resampled_label1)
+    return resampled_img
+
+
+# origin shift with transformindex
+def resample_direcion_origin_spacing_shift(sitk_img, reference_sitk, shift, interpolate=sitk.sitkLinear,
+                                           file_path='temp.nrrd'):
+    """
+    Resample a sitk img, copy direction, origin and spacing of the reference image
+    Keep the size (resolution) of the target image
+    :param sitk_img: sitk.Image
+    :param reference_sitk: sitk.Image
+    :param interpolate: fn
+    :return: falsch muss umgeschrieben werden
+    """
+    resampler = sitk.ResampleImageFilter()
+    resampler.SetOutputSpacing(reference_sitk.GetSpacing())
+    resampler.SetInterpolator(interpolate)
+    resampler.SetOutputDirection(reference_sitk.GetDirection())
+    # if coupled with resampler.SetSize only shift origin if negativ
+    resampler.SetOutputOrigin(reference_sitk.TransformIndexToPhysicalPoint(tuple([abs(x) * -1 for x in shift])))
+    # resampler.SetSize(sitk_img.GetSize())
+    resampler.SetSize(tuple(map(sum, zip(reference_sitk.GetSize(), tuple([abs(x) * 2 for x in shift])))))
+    # resampler.SetSize(tuple(map(sum,zip(sitk_img.GetSize(), tuple([abs(x) for x in shift])))))
+    resampled = resampler.Execute(sitk_img)
+    # copy metadata
+    for key in reference_sitk.GetMetaDataKeys():
+        resampled.SetMetaData(key, get_metadata_maybe(reference_sitk, key))
+    return resampled, file_path
+
+
+# reutrns resampled img1 by referencing img2 with percentage
+def max_thres_resample2_label_img_shift(sitk_img1, sitk_img2, threshold, shift, file_path='temp.nrrd'):
+    label1_img1 = get_single_label_img(sitk_img1, 1)
+    label2_img1 = get_single_label_img(sitk_img1, 2)
+    label3_img1 = get_single_label_img(sitk_img1, 3)
+
+    resampled_label1, _ = resample_direcion_origin_spacing_shift(label1_img1, sitk_img2, shift,
+                                                                 interpolate=sitk.sitkLinear)
+    resampled_label2, _ = resample_direcion_origin_spacing_shift(label2_img1, sitk_img2, shift,
+                                                                 interpolate=sitk.sitkLinear)
+    resampled_label3, _ = resample_direcion_origin_spacing_shift(label3_img1, sitk_img2, shift,
+                                                                 interpolate=sitk.sitkLinear)
+
+    resampled_array1 = sitk.GetArrayFromImage(resampled_label1)
+    resampled_array2 = sitk.GetArrayFromImage(resampled_label2)
+    resampled_array3 = sitk.GetArrayFromImage(resampled_label3)
+
+    resampled_array = add_labels_max_thres(resampled_array1, resampled_array2, resampled_array3, threshold)
+    resampled_img = sitk.GetImageFromArray(resampled_array)
+    resampled_img = sitk.Cast(resampled_img, sitk.sitkUInt8)
+    resampled_img.CopyInformation(resampled_label1)
+    return resampled_img, file_path
+
+
+def transform_to_isotrop_voxels(sitk_img, interpolate=sitk.sitkBSpline, spacing_=(1.,1.,1.), file_path='temp.nrrd'):
+
+    size = sitk_img.GetSize()
+    spacing = sitk_img.GetSpacing()
+    size_new = tuple([int((s*space_old)//space_new) for s,space_old,space_new in zip(size,spacing,spacing_)])
+
+    # resample to isotrop voxels
+    resampler = sitk.ResampleImageFilter()
+    resampler.SetSize(size_new)
+    resampler.SetOutputSpacing(spacing_)
+    resampler.SetOutputOrigin(sitk_img.GetOrigin())
+    resampler.SetOutputDirection(sitk_img.GetDirection())
+    resampler.SetInterpolator(interpolate)
+    resampled = resampler.Execute(sitk_img)
+        # copy metadata
+    for key in sitk_img.GetMetaDataKeys():
+        resampled.SetMetaData(key, get_metadata_maybe(sitk_img, key))
+    return resampled, file_path
+

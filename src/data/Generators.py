@@ -317,32 +317,7 @@ class DataGenerator(BaseGenerator):
                 sitk_msk = resample_3D(sitk_img=sitk_msk, size=new_size_msk, spacing=list(reversed(self.SPACING)),
                                        interpolate=sitk.sitkLinear)
 
-        elif sitk_img.GetDimension() == 3:  # 3d data needs to be resampled at least in z direction
-            logging.debug(('resample in z direction'))
-            logging.debug('Size before resample: {}'.format(sitk_img.GetSize()))
 
-            size_img = sitk_img.GetSize()
-            spacing_img = sitk_img.GetSpacing()
-
-            size_msk = sitk_msk.GetSize()
-            spacing_msk = sitk_msk.GetSpacing()
-            logging.debug('spacing before resample: {}'.format(sitk_img.GetSpacing()))
-
-            # keep x and y size/spacing, just extend the size in z, keep spacing of z --> pad with zero along
-            new_size_img = (*size_img[:-1], self.DIM[0]) # take x and y from the current sitk, extend by z creates x,y,z
-            new_spacing_img = (*spacing_img[:-1], self.SPACING[0])  # spacing is in opposite order
-
-            new_size_msk = (*size_msk[:-1], self.DIM[0])  # take x and y from the current sitk, extend by z creates x,y,z
-            new_spacing_msk = (*spacing_msk[:-1], self.SPACING[0])  # spacing is in opposite order
-
-            sitk_img = resample_3D(sitk_img=sitk_img, size=(new_size_img), spacing=new_spacing_img,
-                                   interpolate=sitk.sitkLinear)
-            if self.MASKS:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size_msk), spacing=new_spacing_msk,
-                                       interpolate=sitk.sitkNearestNeighbor)
-            else:
-                sitk_msk = resample_3D(sitk_img=sitk_msk, size=(new_size_msk), spacing=new_spacing_msk,
-                                       interpolate=sitk.sitkLinear)
 
 
 
@@ -356,9 +331,9 @@ class DataGenerator(BaseGenerator):
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
         t1 = time()
 
-        #img_nda = normalise_image(img_nda, normaliser=self.SCALER)
-        #if not self.MASKS: # yields the image two times for an autoencoder
-        #    mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
+        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
+        if not self.MASKS: # yields the image two times for an autoencoder
+            mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
 
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, '{} normalized image:'.format(self.SCALER))
 
@@ -546,10 +521,6 @@ class CycleMotionDataGenerator(DataGenerator):
             sitk_ax2sax = resample_3D(sitk_img=sitk_ax2sax, size=new_size_msk, spacing=list(reversed(self.SPACING)),
                                        interpolate=sitk.sitkLinear)
 
-        elif sitk_ax.GetDimension() == 3:  # 3d data needs to be resampled/padded at least in z-direction
-            # the ax2sax domain transfer can only work for resampled data
-            logging.error('No resampling applied, this methid might not work as expected. Maybe the data is already resampled')
-
 
         logging.debug('Spacing after resample: {}'.format(sitk_ax.GetSpacing()))
         logging.debug('Size after resample: {}'.format(sitk_ax.GetSize()))
@@ -569,6 +540,9 @@ class CycleMotionDataGenerator(DataGenerator):
         if self.AUGMENT:  # augment data with albumentation
             # TODO: implement augmentation, remember params and apply to the other images
             raise NotImplementedError
+
+        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: normalise_image(x, normaliser=self.SCALER),
+                                                      [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
         nda_ax, nda_ax2sax,nda_sax, nda_sax2ax = map(lambda x: pad_and_crop(x, target_shape=self.DIM),
                                                      [nda_ax, nda_ax2sax,nda_sax, nda_sax2ax])
