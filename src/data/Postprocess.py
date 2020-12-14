@@ -1,8 +1,8 @@
 import logging
 
+import SimpleITK as sitk
 import numpy as np
 from skimage import measure
-import SimpleITK as sitk
 
 
 def clean_3d_prediction_3d_cc(pred, background=0):
@@ -44,7 +44,10 @@ def clean_3d_prediction_3d_cc(pred, background=0):
         biggest = clean_3d_label(val)
         cleaned[biggest] = val
     return cleaned
+
+
 import cv2
+
 
 def clean_3d_prediction_2d_cc(pred):
     cleaned = []

@@ -1,12 +1,11 @@
-from tensorflow.keras import backend as K
 import tensorflow as tf
-import math as m
-from tensorflow.keras.layers import Dropout, BatchNormalization, Activation
-from tensorflow.keras.layers import UpSampling3D
-from tensorflow.keras.layers import UpSampling2D as UpSampling2DInterpol
-from tensorflow.python.keras.utils import conv_utils
-from tensorflow.keras.layers import Layer
 import tensorflow.keras.layers as kl
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Dropout, BatchNormalization, Activation
+from tensorflow.keras.layers import Layer
+from tensorflow.keras.layers import UpSampling2D as UpSampling2DInterpol
+from tensorflow.keras.layers import UpSampling3D
+from tensorflow.python.keras.utils import conv_utils
 
 __all__ = ['UpSampling2DInterpol', 'UpSampling3DInterpol', 'Euler2Matrix', 'ScaleLayer',
            'UnetWrapper', 'ConvEncoder', 'conv_layer_fn', 'downsampling_block_fn', 'upsampling_block_fn',
@@ -147,24 +146,17 @@ class UnetWrapper(Layer):
         self.resize = resize
 
     def call(self, x, **kwargs):
-        # Call the unet with each slice, map_fn needs more memory
-        # x = tf.transpose(x, [1,0,2,3,4])
-        # x = tf.map_fn(self.unet, x,)
-        # x = tf.transpose(x, [1, 0, 2, 3,4])
+        """
+        3D wrapper for a 2D U-Net, any inplane shape is possible, layer will resize x to the U-Net input shape
+        Parameters
+        ----------
+        x :
+        kwargs :
 
-        # resize if input inplane resolution is different to unet input shape
-        #if not tf.equal(tf.shape(x)[-3], self.unet_inplane[0]) and tf.equal(tf.shape(x)[-2], self.unet_inplane[1]):
+        Returns
+        -------
 
-        """ta = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
-        for i in range(len(x)):
-            img_resized = tf.compat.v1.image.resize(x[i],
-                                                    size=self.unet_inplane,
-                                                    method=tf.image.ResizeMethod.BILINEAR,
-                                                    align_corners=True, name='resize')
-            ta.write(i, self.unet(img_resized))
-        ta = ta.stack()
-        x = tf.transpose(ta, [1,0,2,3,4])"""
-
+        """
 
         x = tf.unstack(x, axis=1)
         input_size = x[0].shape[1:-1]
@@ -177,10 +169,10 @@ class UnetWrapper(Layer):
                     align_corners=True,
                     name='resize')) for images in x]
             x = [tf.compat.v1.image.resize(img,
-                    size=input_size,
-                    method=tf.image.ResizeMethod.BILINEAR,
-                    align_corners=True,
-                    name='reverse-resize') for img in x]
+                                           size=input_size,
+                                           method=tf.image.ResizeMethod.BILINEAR,
+                                           align_corners=True,
+                                           name='reverse-resize') for img in x]
         else:
             x = [self.unet(img) for img in x]
 
@@ -198,6 +190,24 @@ class UnetWrapper(Layer):
 class ConvEncoder(Layer):
     def __init__(self, activation, batch_norm, bn_first, depth, drop_3, dropouts, f_size, filters,
                  kernel_init, m_pool, ndims, pad):
+        """
+        Convolutional encoder for 2D or 3D input images/volumes.
+        The architecture is aligned to the downsampling part of a U-Net
+        Parameters
+        ----------
+        activation :
+        batch_norm :
+        bn_first :
+        depth :
+        drop_3 :
+        dropouts :
+        f_size :
+        filters :
+        kernel_init :
+        m_pool :
+        ndims :
+        pad :
+        """
         super(self.__class__, self).__init__()
         self.activation = activation
         self.batch_norm = batch_norm
@@ -291,6 +301,24 @@ class ConvEncoder(Layer):
 class ConvDecoder(Layer):
     def __init__(self, activation, batch_norm, bn_first, depth, drop_3, dropouts, f_size, filters,
                  kernel_init, up_size, ndims, pad):
+        """
+        Convolutional Decoder path, could be used in combination with the encoder layer,
+        or as up-scaling path for super resolution etc.
+        Parameters
+        ----------
+        activation :
+        batch_norm :
+        bn_first :
+        depth :
+        drop_3 :
+        dropouts :
+        f_size :
+        filters :
+        kernel_init :
+        up_size :
+        ndims :
+        pad :
+        """
         super(self.__class__, self).__init__()
         self.activation = activation
         self.batch_norm = batch_norm

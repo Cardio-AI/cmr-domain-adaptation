@@ -1,77 +1,17 @@
-import random
+import numpy as np
+import glob
+import logging
+import os
+from time import time
+
+import SimpleITK as sitk
 import numpy as np
 import pandas as pd
-import logging
-import matplotlib.pyplot as plt
-import glob
-import os
-import SimpleITK as sitk
-from numpy import newaxis
-from skimage.transform import resize
-from src.utils.Utils_io import ensure_dir
-from src.visualization.Visualize import plot_value_histogram
 import yaml
-from time import time
 from sklearn.model_selection import KFold
 
-def copy_meta(new_image, reference_sitk_img):
-
-    """
-    copy sitk metadata tags from one image to another
-    :param new_image:
-    :param reference_sitk_img:
-    :return:
-    """
-    t1 = time()
-    if isinstance(new_image, np.ndarray):
-        new_image = sitk.GetImageFromArray(new_image)
-
-    if reference_sitk_img is not None:
-        assert (isinstance(reference_sitk_img, sitk.Image)), 'no reference image given'
-        assert (isinstance(new_image, sitk.Image)), 'only np.ndarrays and sitk images could be stored'
-
-        # copy metadata
-        for key in reference_sitk_img.GetMetaDataKeys():
-            new_image.SetMetaData(key, get_metadata_maybe(reference_sitk_img, key))
-        logging.debug('Metadata_copied: {:0.3f}s'.format(time() - t1))
-
-        # copy structural informations to image with same dimension and size
-        if (reference_sitk_img.GetDimension() == new_image.GetDimension()) and (reference_sitk_img.GetSize() == new_image.GetSize()):
-            new_image.CopyInformation(reference_sitk_img)
-
-        # same dimension (e.g. 4) but different size per dimension
-        elif (reference_sitk_img.GetDimension() == new_image.GetDimension()):
-
-            # copy spacing and origin but keep size as it is
-            new_image.SetOrigin(reference_sitk_img.GetOrigin())
-            new_image.SetSpacing(reference_sitk_img.GetSpacing())
-            new_image.SetDirection(reference_sitk_img.GetDirection())
-
-        # copy structural informations to smaller images e.g. 4D to 3D
-        elif reference_sitk_img.GetDimension() > new_image.GetDimension():
-            shape_ = len(new_image.GetSize())
-            reference_shape = len(reference_sitk_img.GetSize())
-            new_image.SetOrigin(reference_sitk_img.GetOrigin()[:shape_])
-            new_image.SetSpacing(reference_sitk_img.GetSpacing()[:shape_])
-            # copy direction to smaller images
-            # 1. extract the direction, 2. create a matrix, 3. slice by the new shape, 4. flatten
-            direction = np.array(reference_sitk_img.GetDirection())
-            dir_ = direction.reshape(reference_shape, reference_shape)
-            direction = dir_[:shape_, :shape_].flatten()
-            new_image.SetDirection(direction)
-
-        # copy structural informations to bigger images e.g. 3D to 4D, fill with 1.0
-        else:
-            ones = [1.0] * (new_image.GetDimension() - reference_sitk_img.GetDimension())
-            new_image.SetOrigin((*reference_sitk_img.GetOrigin(), *ones))
-            new_image.SetSpacing((*reference_sitk_img.GetSpacing(), *ones))
-
-        new_image.SetDirection(reference_sitk_img.GetDirection())
-        logging.debug('spatial data_copied: {:0.3f}s'.format(time() - t1))
-
-        return new_image
-
-
+from src.utils.Utils_io import ensure_dir
+from src.visualization.Visualize import plot_value_histogram
 
 
 def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, override_spacing=None, copy_direction=True):
@@ -107,7 +47,8 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
             logging.debug('Metadata_copied: {:0.3f}s'.format(time() - t1))
 
             # copy structural informations to image with same dimension and size
-            if (reference_sitk_img.GetDimension() == new_image.GetDimension()) and (reference_sitk_img.GetSize() == new_image.GetSize()):
+            if (reference_sitk_img.GetDimension() == new_image.GetDimension()) and (
+                    reference_sitk_img.GetSize() == new_image.GetSize()):
                 new_image.CopyInformation(reference_sitk_img)
 
             # same dimension (e.g. 4) but different size per dimension
@@ -149,7 +90,6 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
                 new_image.SetSpacing(override_spacing)
 
         if full_filename != None:
-
             # copy uid
             writer = sitk.ImageFileWriter()
             # writer.KeepOriginalImageUIDOn()
@@ -163,7 +103,6 @@ def copy_meta_and_save(new_image, reference_sitk_img, full_filename=None, overri
 
     else:
         return new_image
-
 
 
 def create_4d_volumes_from_4d_files(img_f, mask_f, full_path='data/raw/GCN/3D/', slice_threshold=2):
@@ -283,7 +222,7 @@ def create_2d_slices_from_4d_volume_files(img_f, mask_f, export_path, filter_by_
 
     # filter 4d image nda according to given mask nda
     if filter_by_mask:
-        mask_4d_nda, masked_t = filter_4d_vol(mask_4d_sitk,slice_threshold=slice_threshold)
+        mask_4d_nda, masked_t = filter_4d_vol(mask_4d_sitk, slice_threshold=slice_threshold)
         img_4d_nda = sitk.GetArrayFromImage(img_4d_sitk)[masked_t]
     else:
         img_4d_nda = sitk.GetArrayFromImage(img_4d_sitk)
@@ -303,8 +242,8 @@ def create_2d_slices_from_4d_volume_files(img_f, mask_f, export_path, filter_by_
             mask_file = '{}_t{}_z{}_{}{}'.format(patient_name, str(t), str(z), 'msk', '.nrrd')
 
             # save nrrd file with metadata
-            copy_meta_and_save(slice_2d[0], img_4d_sitk, os.path.join(export_path, img_file),copy_direction=False)
-            copy_meta_and_save(slice_2d[1], img_4d_sitk, os.path.join(export_path, mask_file),copy_direction=False)
+            copy_meta_and_save(slice_2d[0], img_4d_sitk, os.path.join(export_path, img_file), copy_direction=False)
+            copy_meta_and_save(slice_2d[1], img_4d_sitk, os.path.join(export_path, mask_file), copy_direction=False)
 
     return [masked_t, list(img_4d_nda.shape)]
 
@@ -337,7 +276,6 @@ def create_2d_slices_from_3d_volume_files_any_filename(img_f, mask_f, export_pat
     _, img_f = os.path.split(img_f)
     _, mask_f = os.path.split(mask_f)
 
-
     def get_new_name(f_name, z):
         match = ''
         # check if image or mask
@@ -360,6 +298,7 @@ def create_2d_slices_from_3d_volume_files_any_filename(img_f, mask_f, export_pat
         copy_meta_and_save(slice_2d[1], img_3d_sitk, os.path.join(export_path, mask_file))
 
     return list(img_3d.shape)
+
 
 def create_2d_slices_from_3d_volume_files(img_f, mask_f, export_path):
     """
@@ -409,11 +348,11 @@ def get_patient(filename_to_2d_nrrd_file):
     """
     import re
     m = re.search('__', filename_to_2d_nrrd_file)
-    if m: # nrrd filename with '__'
+    if m:  # nrrd filename with '__'
         return os.path.basename(filename_to_2d_nrrd_file).split('__')[0]
-    if os.path.basename(filename_to_2d_nrrd_file).startswith('patient'): # acdc file
+    if os.path.basename(filename_to_2d_nrrd_file).startswith('patient'):  # acdc file
         return os.path.basename(filename_to_2d_nrrd_file).split('_')[0]
-    else: # gcn filename
+    else:  # gcn filename
         return '_'.join(os.path.basename(filename_to_2d_nrrd_file).split('_')[:2])
 
 
@@ -432,7 +371,7 @@ def get_trainings_files(data_path, fold=0, path_to_folds_df='data/raw/gcn_05_202
     # load the nrrd files with given pattern from the data path
     x = sorted(glob.glob(os.path.join(data_path, img_suffix)))
     y = sorted(glob.glob(os.path.join(data_path, mask_suffix)))
-    if len(x) ==0:
+    if len(x) == 0:
         logging.info('no files found, try to load with acdc file pattern')
         x, y = load_acdc_files(data_path)
 
@@ -462,6 +401,7 @@ def get_trainings_files(data_path, fold=0, path_to_folds_df='data/raw/gcn_05_202
                                                                                               fold))
 
     return x_train, y_train, x_test, y_test
+
 
 def get_kfolded_data(kfolds=4, path_to_data='data/raw/tetra/2D/', extract_patient_id=get_patient):
     """
@@ -501,7 +441,7 @@ def get_kfolded_data(kfolds=4, path_to_data='data/raw/tetra/2D/', extract_patien
     patients = sorted(list(set([extract_patient_id(f) for f in x])))
     logging.info('found: {} patients'.format(len(patients)))
     # create a k-fold instance with k = kfolds
-    kfold = KFold(n_splits=kfolds, shuffle=True,random_state=seed)
+    kfold = KFold(n_splits=kfolds, shuffle=True, random_state=seed)
 
     def filter_x_by_patient_ids_(x, patient_ids, modality, columns, f):
         # create a dataframe from x (list of filenames) filter by patient ids
@@ -541,7 +481,9 @@ def get_kfolded_data(kfolds=4, path_to_data='data/raw/tetra/2D/', extract_patien
     return df_folds
 
 
-def filter_x_by_patient_ids(x, patient_ids, modality='test', columns=['x_path', 'y_path', 'fold', 'modality', 'patient', 'pathology'], fold=0, pathology=None, filter=True):
+def filter_x_by_patient_ids(x, patient_ids, modality='test',
+                            columns=['x_path', 'y_path', 'fold', 'modality', 'patient', 'pathology'], fold=0,
+                            pathology=None, filter=True):
     """
     Create a df from a given list of files
     and a list of patient which are used to filter the file names
@@ -602,7 +544,7 @@ def get_n_patients(df, n=1):
 
 
 def get_train_data_from_df(first_df='reports/kfolds_data/2D/acdc/df_kfold.csv', second_df=None,
-                           n_second_df=0, n_first_df=None, fold=0,):
+                           n_second_df=0, n_first_df=None, fold=0, ):
     """
     load one df and select n patients, default: use all
     load a second df, if given
@@ -645,8 +587,9 @@ def get_train_data_from_df(first_df='reports/kfolds_data/2D/acdc/df_kfold.csv', 
     df_train = df[df['modality'] == 'train']
     df_test = df[df['modality'] == 'test']
 
-    return sorted(df_train['x_path'].values), sorted(df_train['y_path'].values), sorted(df_test['x_path'].values), sorted(df_test[
-        'y_path'].values), extend
+    return sorted(df_train['x_path'].values), sorted(df_train['y_path'].values), sorted(
+        df_test['x_path'].values), sorted(df_test[
+                                              'y_path'].values), extend
 
 
 def create_acdc_dataframe_for_cv(path_to_data='data/raw/ACDC/2D/', kfolds=4,
@@ -673,7 +616,7 @@ def create_acdc_dataframe_for_cv(path_to_data='data/raw/ACDC/2D/', kfolds=4,
     from sklearn.model_selection import KFold
 
     seed = 42
-    #img_pattern = '*img.nrrd'
+    # img_pattern = '*img.nrrd'
     columns = ['fold', 'x_path', 'y_path', 'modality', 'patient', 'pathology']
     modality_train = 'train'
     modality_test = 'test'
@@ -705,7 +648,7 @@ def create_acdc_dataframe_for_cv(path_to_data='data/raw/ACDC/2D/', kfolds=4,
         # kfold.split returns the patient indexes for each fold
         for fold, idx in enumerate(kfold.split(patients)):
             train_idx, test_idx = idx
-            #logging.debug("TRAIN:", train_idx, "TEST:", test_idx)
+            # logging.debug("TRAIN:", train_idx, "TEST:", test_idx)
 
             # create one list for the train and test patient ids from the kfold split indexes
             patients_train, patients_test = [patients[i] for i in train_idx], [patients[i] for i in test_idx]
@@ -739,7 +682,7 @@ def describe_acdc_patient_folder(p):
     patient = os.path.basename(os.path.abspath(p))
 
     # get all files for this patient
-    #files = sorted(glob.glob(os.path.join(p, '*')))
+    # files = sorted(glob.glob(os.path.join(p, '*')))
 
     phases = ['cfg', 'ed', 'ed_gt', 'es', 'es_gt', '4d']
 
@@ -782,7 +725,6 @@ def get_phase_file(folder, phase='ED', gt=False):
     else:
         p = os.path.join(folder, '*frame{}.nii.gz'.format(frame))
     return glob.glob(p)[0]
-
 
 
 def get_pathology_group(folder):
@@ -882,15 +824,15 @@ def get_img_msk_files_from_split_dir(path, img_suffix='*img.nrrd', mask_suffix='
     returns a tuple of lists: images, masks
     """
     assert (os.path.exists(path)), 'Path: {} does not exist'.format(path)
-    
+
     images = sorted(glob.glob(os.path.join(path, '*img.nrrd')))
     masks = sorted(glob.glob(os.path.join(path, '*msk.nrrd')))
-    
+
     if len(images) == 0:
         logging.info('no nrrd files found, try to load acdc files.')
         images = sorted(glob.glob(os.path.join(path, '**/*frame[0-9][0-9].nii.gz')))
         masks = sorted(glob.glob(os.path.join(path, '**/*frame*_gt.nii.gz')))
-    
+
     return images, masks
 
 
@@ -922,10 +864,10 @@ def get_phase(row, df, col='patient_unique'):
     Get the phase for a 3D volume from the export excel sheet
     which is loaded as df_time
     """
-    
+
     # get unique patient id from the current row
     unique_p = row[col]
-    
+
     # check if this patient id is in the given dataframe
     if unique_p in df[col].values:
 
@@ -947,7 +889,6 @@ def get_phase(row, df, col='patient_unique'):
 
     else:
         return False
-
 
 
 def get_patients(path):
@@ -976,13 +917,22 @@ def get_3d_img_msk_files(path, img_suffix='images/*img.nrrd', mask_suffix='masks
     """
     Returns two file lists of the containing
     nrrd file names with the suffix msk/img
+    Parameters
+    ----------
+    path : string, path_to_folder
+    img_suffix : glob search suffix for identifying img nrrd files
+    mask_suffix :glob search suffix for identifying mask nrrd files
+
+    Returns
+    -------
+
     """
-    
+
     assert (os.path.exists(path)), 'Path: {} does not exist'.format(path)
-    
-    masks = sorted(glob.glob(os.path.join(path, 'masks/*msk.nrrd')))
-    images = sorted(glob.glob(os.path.join(path, 'images/*img.nrrd')))
-    
+
+    masks = sorted(glob.glob(os.path.join(path, mask_suffix)))
+    images = sorted(glob.glob(os.path.join(path, img_suffix)))
+
     if len(images) == 0:
         logging.info('no nrrd files found, try to load acdc files.')
         images, masks = load_acdc_files(path)
@@ -995,10 +945,15 @@ def describe_volume(f_name, image=True, plot=False):
     Loads a nnrd file from a given filename
     extracts some metadata if given
     returns a flat json with all properties
-    :param f_name:
-    :param image:
-    :param plot:
-    :return:
+    Parameters
+    ----------
+    f_name : string, file-path
+    image : bool
+    plot : bool
+
+    Returns json
+    -------
+
     """
 
     # load file, convert and calculate stats
@@ -1032,7 +987,7 @@ def describe_volume(f_name, image=True, plot=False):
         '''
         create a flat dicom image representation
         works with 2d and 3d nrrd files
-        :return:
+        :return: json object
         '''
         json_representation = {}
         json_representation['f_name'] = f_name
@@ -1121,9 +1076,19 @@ def describe_volume(f_name, image=True, plot=False):
 
 def describe_path(path='data/processed/train/', dataset=['ACDC', 'GCN'], wildcard=None, plot_histogram=True):
     """
-    reads all nrrd images/ masks within a train, val, test folder 
+    reads all nrrd images/ masks within a train, val, test folder
     returns a dataframe with all image data
     plots a histogram for every 10th volume
+    Parameters
+    ----------
+    path :
+    dataset :
+    wildcard :
+    plot_histogram :
+
+    Returns
+    -------
+
     """
 
     files = pd.DataFrame()
@@ -1180,7 +1145,17 @@ def describe_path(path='data/processed/train/', dataset=['ACDC', 'GCN'], wildcar
 def get_min_max_t_per_patient(df_patient, col='vol in ml', target_col='t_norm'):
     """
     Helper to get min/max of one columns
-    returns a dict with {patient: 123abc , min: timestep as int, max: timestep as int}"""
+    returns a dict with {patient: 123abc , min: timestep as int, max: timestep as int}
+    Parameters
+    ----------
+    df_patient :
+    col :
+    target_col :
+
+    Returns
+    -------
+
+    """
 
     result = dict()
 
@@ -1208,8 +1183,8 @@ def get_reference_nrrd(p, orig_file_path):
     tries to find the patient id in the file path, returns a sitk image
     Parameters
     ----------
-    p :
-    orig_file_path :
+    p : string, patient-id
+    orig_file_path : string, full-file-path
 
     Returns
     -------

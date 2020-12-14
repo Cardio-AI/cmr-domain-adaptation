@@ -1,19 +1,18 @@
 import logging
 import os
 import sys
-import matplotlib.pyplot as plt
-import numpy as np
-import SimpleITK as sitk
-from sklearn.metrics import confusion_matrix
-from src.utils.Utils_io import save_plot, ensure_dir
-import SimpleITK as sitk
-from matplotlib.ticker import PercentFormatter
 from collections import Counter
 
+import SimpleITK as sitk
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
-import matplotlib.patches as mpatches
 import numpy as np
+from matplotlib.ticker import PercentFormatter
+from sklearn.metrics import confusion_matrix
+
+from src.utils.Utils_io import save_plot, ensure_dir
+
 
 def my_autopct(pct):
     """
@@ -21,7 +20,8 @@ def my_autopct(pct):
     :param pct:
     :return:
     """
-    return ('%1.0f%%'% pct) if pct > 1 else ''
+    return ('%1.0f%%' % pct) if pct > 1 else ''
+
 
 def get_metadata_maybe(sitk_img, key, default='not_found'):
     # helper for unicode decode errors
@@ -36,13 +36,14 @@ def get_metadata_maybe(sitk_img, key, default='not_found'):
     return value
 
 
-def show_2D_or_3D(img=None, mask=None, save=False, file_name='reports/figure/temp.png',dpi=200,f_size=(5,5), interpol='bilinear'):
+def show_2D_or_3D(img=None, mask=None, save=False, file_name='reports/figure/temp.png', dpi=200, f_size=(5, 5),
+                  interpol='bilinear'):
     """
     Debug wrapper for 2D or 3D image/mask vizualisation
     wrapper checks the ndim and calls shoow_transparent or plot 3d
     :param img:
     :param mask:
-    :param show:
+    :param save:
     :param f_size:
     :return:
     """
@@ -62,17 +63,16 @@ def show_2D_or_3D(img=None, mask=None, save=False, file_name='reports/figure/tem
     else:
         dim = mask.ndim
 
-
     if dim == 2:
         return show_slice_transparent(img, mask)
     elif dim == 3 and img.shape[-1] == 1:  # data from the batchgenerator
         return show_slice_transparent(img, mask)
     elif dim == 3:
-        return plot_3d_vol(img, mask, save=save, path=file_name,dpi=dpi,fig_size=f_size, interpol=interpol)
+        return plot_3d_vol(img, mask, save=save, path=file_name, dpi=dpi, fig_size=f_size, interpol=interpol)
     elif dim == 4 and img.shape[-1] == 1:  # data from the batchgenerator
-        return plot_3d_vol(img, mask, save=save, path=file_name,dpi=dpi,fig_size=f_size, interpol=interpol)
-    elif dim == 4 and img.shape[-1] in [3,4]: # only mask
-        return plot_3d_vol(img, save=save, path=file_name,dpi=dpi,fig_size=f_size, interpol=interpol)
+        return plot_3d_vol(img, mask, save=save, path=file_name, dpi=dpi, fig_size=f_size, interpol=interpol)
+    elif dim == 4 and img.shape[-1] in [3, 4]:  # only mask
+        return plot_3d_vol(img, save=save, path=file_name, dpi=dpi, fig_size=f_size, interpol=interpol)
     elif dim == 4:
         return plot_4d_vol(img, mask)
     else:
@@ -81,53 +81,56 @@ def show_2D_or_3D(img=None, mask=None, save=False, file_name='reports/figure/tem
 
 
 def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
-
     # create a violinplot with an integrated bland altmann plot
     # nobs = median
     import seaborn as sns
     outliers = False
-    my_pal_1 = {"Dice LV": "dodgerblue", "Dice MYO": "g", "Dice RV":"darkorange"}
-    my_pal_2 = {"Err LV(ml)": "dodgerblue", "Err MYO(ml)": "g", "Err RV(ml)":"darkorange"}
-    my_pal_3 = {"Volume LV": "dodgerblue", "Volume MYO": "g", "Volume RV":"darkorange"}
+    my_pal_1 = {"Dice LV": "dodgerblue", "Dice MYO": "g", "Dice RV": "darkorange"}
+    my_pal_2 = {"Err LV(ml)": "dodgerblue", "Err MYO(ml)": "g", "Err RV(ml)": "darkorange"}
+    my_pal_3 = {"Volume LV": "dodgerblue", "Volume MYO": "g", "Volume RV": "darkorange"}
     hd_pal = {"Hausdorff LV": "dodgerblue", "Hausdorff MYO": "g", "Hausdorff RV": "darkorange"}
-
 
     plt.rcParams.update({'font.size': 20})
     if df_haus is not None:
-        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(25,8), sharey=False)
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(25, 8), sharey=False)
     else:
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 8), sharey=False)
 
-    ax1 = sns.violinplot(x= 'variable',y = 'value', data=df_dice,order=["Dice LV", "Dice MYO", "Dice RV"],palette=my_pal_1 , showfliers = outliers, ax=ax1)
+    ax1 = sns.violinplot(x='variable', y='value', data=df_dice, order=["Dice LV", "Dice MYO", "Dice RV"],
+                         palette=my_pal_1, showfliers=outliers, ax=ax1)
     medians = df_dice.groupby(['variable'])['value'].mean().round(2)
     sd = df_dice.groupby(['variable'])['value'].std().round(2)
-    nobs = ['{}+/-{}'.format(m,s) for m,s in zip(medians, sd)]
+    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(medians, sd)]
 
-    for tick,label in zip(range(len(ax1.get_xticklabels())),ax1.get_xticklabels()):
-        _ = ax1.text(tick, medians[tick], nobs[tick],horizontalalignment='center', size='x-small', color='black', weight='semibold')
-    plt.setp(ax1, ylim=(0,1))
+    for tick, label in zip(range(len(ax1.get_xticklabels())), ax1.get_xticklabels()):
+        _ = ax1.text(tick, medians[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
+                     weight='semibold')
+    plt.setp(ax1, ylim=(0, 1))
     plt.setp(ax1, ylabel=('DICE'))
     plt.setp(ax1, xlabel='')
-    ax1.set_xticklabels(['LV','MYO', 'RV'])
+    ax1.set_xticklabels(['LV', 'MYO', 'RV'])
 
     # create bland altmannplot from vol diff
     ax2 = bland_altman_metric_plot(eval, ax2)
 
     # create violin plot for the volume
-    ax3 = sns.violinplot(x= 'variable',y = 'value',order=["Volume LV", "Volume MYO", "Volume RV"], palette=my_pal_3, showfliers = outliers, data=df_vol, ax=ax3)
+    ax3 = sns.violinplot(x='variable', y='value', order=["Volume LV", "Volume MYO", "Volume RV"], palette=my_pal_3,
+                         showfliers=outliers, data=df_vol, ax=ax3)
 
     medians = df_vol.groupby(['variable'])['value'].mean().round(2)
     sd = df_vol.groupby(['variable'])['value'].std().round(2)
-    nobs = ['{}+/-{}'.format(m,s) for m,s in zip(medians, sd)]
+    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(medians, sd)]
 
-    for tick,label in zip(range(len(ax3.get_xticklabels())),ax3.get_xticklabels()):
-        _ = ax3.text(tick, medians[tick], nobs[tick],horizontalalignment='center', size='x-small', color='black', weight='semibold')
-    #plt.setp(ax3, ylim=(0,500))
+    for tick, label in zip(range(len(ax3.get_xticklabels())), ax3.get_xticklabels()):
+        _ = ax3.text(tick, medians[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
+                     weight='semibold')
+    # plt.setp(ax3, ylim=(0,500))
     plt.setp(ax3, ylabel=('Vol size in ml'))
     plt.setp(ax3, xlabel='')
-    ax3.set_xticklabels(['LV','MYO', 'RV'])
+    ax3.set_xticklabels(['LV', 'MYO', 'RV'])
 
-    ax4 = sns.violinplot(x='variable', y='value', order=["Hausdorff LV", "Hausdorff MYO", "Hausdorff RV"], palette=hd_pal,
+    ax4 = sns.violinplot(x='variable', y='value', order=["Hausdorff LV", "Hausdorff MYO", "Hausdorff RV"],
+                         palette=hd_pal,
                          showfliers=outliers, data=df_haus, ax=ax4)
 
     medians = df_haus.groupby(['variable'])['value'].mean().round(2)
@@ -140,124 +143,9 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
     plt.setp(ax4, ylim=(0, 50))
     plt.setp(ax4, ylabel=('Hausdorff distance'))
     plt.setp(ax4, xlabel='')
-    ax4.set_xticklabels(['LV','MYO', 'RV'])
+    ax4.set_xticklabels(['LV', 'MYO', 'RV'])
     plt.tight_layout()
     return fig
-
-def show_slice(img=[], mask=[], show=True, f_size=(15, 5)):
-    """
-    Plot image + masks in one figure
-    """
-    mask_values = [1, 2, 3]
-
-    if isinstance(img, sitk.Image):
-        img = sitk.GetArrayFromImage(img).astype(np.float32)
-
-    if isinstance(mask, sitk.Image):
-        mask = sitk.GetArrayFromImage(mask).astype(np.float32)
-
-    # dont print anything if no images nor masks are given
-    if len(img) == 0 and len(mask) == 0:
-        print('no images given')
-        return
-
-    # replace mask with empty slice if none is given
-    if len(mask) == 0:
-        shape = img.shape
-        mask = np.zeros((shape[0], shape[1], 3))
-
-    # replace image with empty slice if none is given
-    if len(img) == 0:
-        shape = mask.shape
-        img = np.zeros((shape[0], shape[1], 1))
-
-    # check image shape
-    if len(img.shape) == 2:
-        # image already in 2d shape take it as it is
-        x_ = img.astype(np.float32)
-    elif len(img.shape) == 3:
-        # take only the first channel, grayscale - ignore the others
-        x_ = (img[..., 0]).astype(np.float32)
-    else:
-        logging.info('invalid dimensions for image: {}'.format(img.shape))
-        return
-
-    # check masks shape, handle mask without channel per label
-    if len(mask.shape) == 2:  # mask with int as label values
-        y_ = transform_to_binary_mask(mask, mask_values=mask_values)
-
-    elif len(mask.shape) == 3 and mask.shape[2] == 3:  # handle mask with three channels
-        y_ = mask
-
-    elif len(mask.shape) == 3 and mask.shape[2] in [4]:  # handle mask with 4 channels (backround = first channel)
-        y_ = mask[..., 1:]  # ignore backround channel for plotting
-
-    else:
-        logging.info('invalid dimensions for masks: {}'.format(mask.shape))
-        return
-
-    y_ = (y_).astype(np.float32)  # set a threshold for slices during training
-
-    # scale image between 0 and 1
-    x_ = (x_ - x_.min()) / (x_.max() - x_.min() + sys.float_info.epsilon)
-
-    # draw mask and image as rgb image, 
-    # use the green channel for mask and image
-    temp = np.zeros((x_.shape[0], x_.shape[1], 3), dtype=np.float32)
-    temp[..., 1] = np.maximum(x_, y_[..., 1] > 0.5)  # green
-    temp[..., 0] = np.maximum(x_, y_[..., 0] > 0.5)  # red
-    temp[..., 2] = np.maximum(x_, y_[..., 2] > 0.5)  # blue
-
-    if show:
-        # define figure size
-        rows = 1
-        columns = 3
-        fig = plt.figure(figsize=f_size)
-        fig.add_subplot(rows, columns, 1)
-        plt.imshow(temp)
-
-        # RV = 1 = Y[:,:,0] # Myo = 2 = Y[:,:,1] # LV = 3 = Y[:,:,2]
-        # draw all mask channels as rgb image
-        fig.add_subplot(rows, columns, 2)
-        temp2 = np.zeros((x_.shape[0], x_.shape[1], 3))
-        temp2[..., 1] = y_[..., 1]
-        temp2[..., 0] = y_[..., 0]
-        temp2[..., 2] = y_[..., 2]
-        plt.imshow(temp2)
-
-        # draw the plain training image
-        fig.add_subplot(rows, columns, 3)
-        plt.imshow(x_)
-
-        fig.tight_layout(pad=0)
-        #plt.show()
-        logging.info('Image-shape: {}'.format(x_.shape))
-        logging.info('Image data points: {}'.format((x_ > 0).sum()))
-        logging.info('Image mean: {:.3f}'.format(x_.mean()))
-        logging.info('Image max: {:.3f}'.format(x_.max()))
-        logging.info('Image min: {:.3f}'.format(x_.min()))
-        logging.info('Mask-shape: {}'.format(y_.shape))
-        logging.info('RV mask data points: {}'.format((y_[:, :, 0] > 0.0).sum()))
-        logging.info('Myo mask data points: {}'.format((y_[:, :, 1] > 0.0).sum()))
-        logging.info('LV mask data points: {}'.format((y_[:, :, 2] > 0.0).sum()))
-        logging.info('RV mask mean: {}'.format(y_[:, :, 0].mean()))
-        logging.info('Myo mask mean: {}'.format(y_[:, :, 1].mean()))
-        logging.info('LV mask mean: {}'.format(y_[:, :, 2].mean()))
-
-    else:
-        return temp
-
-    """
-    experimental: convert figure to numpy array, works but bad quality
-    
-            fig.canvas.draw()
-        # grab the pixel buffer and dump it into a numpy array
-        # Now we can save it to a numpy array.
-        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        return data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    
-    """
-
 
 def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=None):
     """
@@ -299,12 +187,12 @@ def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=Non
 
     # check masks shape, handle mask without channel per label
     if len(mask.shape) == 2:  # mask with int as label values
-        y_ = transform_to_binary_mask(mask, mask_values=[1,2,3]).astype(np.float32)
-        #print(y_.shape)
+        y_ = transform_to_binary_mask(mask, mask_values=[1, 2, 3]).astype(np.float32)
+        # print(y_.shape)
     elif len(mask.shape) == 3 and mask.shape[2] == 1:  # handle mask with empty additional channel
         mask = mask[..., 0]
-        y_ = transform_to_binary_mask(mask, mask_values=[1,2,3]).astype(np.float32)
-        
+        y_ = transform_to_binary_mask(mask, mask_values=[1, 2, 3]).astype(np.float32)
+
     elif len(mask.shape) == 3 and mask.shape[2] == 3:  # handle mask with three channels
         y_ = (mask).astype(np.float32)
     elif len(mask.shape) == 3 and mask.shape[2] == 4:  # handle mask with 4 channels (backround = first channel)
@@ -313,19 +201,19 @@ def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=Non
     else:
         logging.error('invalid dimensions for masks: {}'.format(mask.shape))
         return
-    
-    if not ax: # no axis given
+
+    if not ax:  # no axis given
         fig = plt.figure(figsize=f_size)
         ax = fig.add_subplot(1, 1, 1, frameon=False)
-    else: # axis given get the current fig
+    else:  # axis given get the current fig
         fig = plt.gcf()
-        
+
     fig.tight_layout(pad=0)
     ax.axis('off')
-    
-    # normalise image
+
+    # normalise image, avoid interpolation by matplotlib to have full control
     x_ = (x_ - x_.min()) / (x_.max() - x_.min() + sys.float_info.epsilon)
-    ax.imshow(x_, 'gray',vmin=0,vmax=0.4)
+    ax.imshow(x_, 'gray', vmin=0, vmax=0.4)
     ax.imshow(y_, interpolation='none', alpha=.3)
 
     if show:
@@ -334,7 +222,7 @@ def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=Non
         return fig
 
 
-def bland_altman_metric_plot(metric, ax = None):
+def bland_altman_metric_plot(metric, ax=None):
     '''
     Plots a Bland Altmann plot for a evaluation dataframe from the eval scripts
     :param metric: pd.Dataframe
@@ -353,7 +241,7 @@ def bland_altman_metric_plot(metric, ax = None):
 
     my_colors = {"LV": "dodgerblue", "MYO": "g", "RV": "darkorange"}
 
-    def bland_altman_plot(data1, data2, shifting,*args, **kwargs):
+    def bland_altman_plot(data1, data2, shifting, *args, **kwargs):
         """
         Create a single bland altmann plot into the ax object of the surounding wrapper function,
         this functions will be called for each label
@@ -364,9 +252,9 @@ def bland_altman_metric_plot(metric, ax = None):
         :param kwargs:
         :return: None
         """
-        from scipy.stats import wilcoxon, ttest_ind
-        #stat, p = wilcoxon(data1, data2)
-        #print('wilcoxon rank test: {}, {}'.format(stat, p))
+        from scipy.stats import ttest_ind
+        # stat, p = wilcoxon(data1, data2)
+        # print('wilcoxon rank test: {}, {}'.format(stat, p))
         stat, p = ttest_ind(data1, data2)
         print('T-test - stats: {}, p: {}'.format(stat, p))
 
@@ -379,7 +267,7 @@ def bland_altman_metric_plot(metric, ax = None):
 
         # plot points and lines
         line_size = 4
-        ax.scatter(mean, diff, alpha=0.4, s=200,*args, **kwargs)
+        ax.scatter(mean, diff, alpha=0.4, s=200, *args, **kwargs)
         ax.axhline(md, **kwargs, linestyle='-', alpha=0.5, lw=line_size)
         ax.axhline(md + 1.96 * sd, **kwargs, linestyle='--', alpha=0.5, lw=line_size)
         ax.axhline(md - 1.96 * sd, **kwargs, linestyle='--', alpha=0.5, lw=line_size)
@@ -390,7 +278,8 @@ def bland_altman_metric_plot(metric, ax = None):
         limitOfAgreementRange = (md + (limitOfAgreement * sd)) - (md - limitOfAgreement * sd)
         offset = (limitOfAgreementRange / 100.0) * 1.5
         text_size = plt.rcParams['font.size']
-        ax.annotate(f'{md:.2f}' + ' ± ' + f'{sd:.2f}', xy=(0.05, shifting), xycoords='axes fraction', fontsize=text_size, fontname='Cambria',weight='semibold', **kwargs)
+        ax.annotate(f'{md:.2f}' + ' ± ' + f'{sd:.2f}', xy=(0.05, shifting), xycoords='axes fraction',
+                    fontsize=text_size, fontname='Cambria', weight='semibold', **kwargs)
 
     # plot 3 different metrics into the same plot
     pred = metric['Volume LV']
@@ -424,6 +313,7 @@ def bland_altman_metric_plot(metric, ax = None):
     ax.set_xlim(0, 550)
 
     return ax
+
 
 def plot_confusion_matrix(y_true, y_pred, classes,
                           normalize=False,
@@ -521,23 +411,22 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
 
     if img_4d.shape[-1] == 4:
         img_4d = img_4d[..., 1:]  # ignore background if 4 channels are given
-    
+
     elif img_4d.shape[-1] == 1:
         img_4d = img_4d[..., 0]  # ignore single channels at the end, matpotlib cant plot this shape
 
-    if mask_4d is not None: # if images and masks are provided
-        if mask_4d.shape[-1] in [3,4]:
+    if mask_4d is not None:  # if images and masks are provided
+        if mask_4d.shape[-1] in [3, 4]:
             mask_4d = mask_4d[..., -3:]  # ignore background for masks if 4 channels are given
-    
-    
+
     # define the number of subplots
     # timesteps * z-slices
-    z_size = min(int(2*img_4d.shape[1]), 30)
-    t_size = min(int(2*len(timesteps)), 20)
+    z_size = min(int(2 * img_4d.shape[1]), 30)
+    t_size = min(int(2 * len(timesteps)), 20)
     logging.info('figure: {} x {}'.format(z_size, t_size))
 
     # long axis volumes have only one z slice squeeze=False is neccessary to avoid sqeezing the axes
-    fig, ax = plt.subplots(len(timesteps), img_4d.shape[1], figsize=[z_size, t_size],squeeze=False)
+    fig, ax = plt.subplots(len(timesteps), img_4d.shape[1], figsize=[z_size, t_size], squeeze=False)
     for t_, img_3d in enumerate(img_4d):  # traverse trough time
 
         for z, slice in enumerate(img_3d):  # traverse through the z-axis
@@ -603,16 +492,16 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
     else:
         logging.debug('timestep: {} - plotting'.format(timestep))
 
-    if img_3d.shape[-1] in [3,4]: # this image is a mask
+    if img_3d.shape[-1] in [3, 4]:  # this image is a mask
         img_3d = img_3d[..., -3:]  # ignore background
-        mask_3d = img_3d # handle this image as mask
+        mask_3d = img_3d  # handle this image as mask
         img_3d = np.zeros((mask_3d.shape[:-1]))
 
     elif img_3d.shape[-1] == 1:
         img_3d = img_3d[..., 0]  # matpotlib cant plot this shape
 
     if mask_3d is not None:
-        if mask_3d.shape[-1] in [3,4]:
+        if mask_3d.shape[-1] in [3, 4]:
             mask_3d = mask_3d[..., -3:]  # ignore background if 4 channels are given
         elif mask_3d.shape[-1] > 4:
             mask_3d = transform_to_binary_mask(mask_3d)
@@ -623,7 +512,7 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
         slice_n = img_3d.shape[0] // max_number_of_slices
 
     img_3d = img_3d[::slice_n]
-    mask_3d = mask_3d[::slice_n]if mask_3d is not None else mask_3d
+    mask_3d = mask_3d[::slice_n] if mask_3d is not None else mask_3d
 
     # number of subplots = no of slices in z-direction
     fig = plt.figure(figsize=fig_size, dpi=dpi)
@@ -634,13 +523,12 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
         if mask_3d is not None:
             ax = show_slice_transparent(img=slice, mask=mask_3d[idx], show=True, ax=ax)
         else:
-            mixed = show_slice(img=slice, mask=[], show=False)
+            mixed = show_slice_transparent(img=slice, mask=[], show=False)
             ax.imshow(mixed)
 
         ax.set_xticks([])
         ax.set_yticks([])
-        #ax.set_title('z-axis: {}'.format(idx), color='r', fontsize=plt.rcParams['font.size'])
-
+        # ax.set_title('z-axis: {}'.format(idx), color='r', fontsize=plt.rcParams['font.size'])
 
     fig.subplots_adjust(wspace=0, hspace=0)
     if save:
@@ -738,6 +626,7 @@ def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_label
     else:
         plt.show()
 
+
 def transform_to_binary_mask(mask_nda, mask_values=None):
     '''
     Transform the labels to binary channel masks
@@ -757,6 +646,7 @@ def transform_to_binary_mask(mask_nda, mask_values=None):
     for ix, mask_value in enumerate(mask_values):
         mask[..., ix] = mask_nda == mask_value
     return mask
+
 
 def plot_value_histogram(nda, f_name='histogram.jpg', image=True, reports_path='reports/figures/4D_description'):
     '''
@@ -839,7 +729,6 @@ def create_quiver_plot(flowfield_2d=None, ax=None, N=5, scale=0.3, linewidth=.5)
     :return: ax to plot or save
     """
     from matplotlib import cm
-    from src.data.Preprocess import normalise_image
     import matplotlib
 
     if not ax:
@@ -859,7 +748,7 @@ def create_quiver_plot(flowfield_2d=None, ax=None, N=5, scale=0.3, linewidth=.5)
     start_y = border
     nz = Z_.shape[0] - border
     nx = X_.shape[0] - border  # define ticks in x
-    ny = Y_.shape[1] - border # define ticks in y
+    ny = Y_.shape[1] - border  # define ticks in y
 
     # slice flowfield, take every N value
     Fz = Z_[::N, ::N]
@@ -876,9 +765,9 @@ def create_quiver_plot(flowfield_2d=None, ax=None, N=5, scale=0.3, linewidth=.5)
 
     # working, use z as color
     # this way is not as clear as the test 3
-    #norm = normalise_image(Fz)
-    #colors = cm.copper(norm)
-    #colors = colors.reshape(-1, 4)
+    # norm = normalise_image(Fz)
+    # colors = cm.copper(norm)
+    # colors = colors.reshape(-1, 4)
 
     # test 3
     occurrence = Fz.flatten() / np.sum(Fz)
@@ -891,7 +780,8 @@ def create_quiver_plot(flowfield_2d=None, ax=None, N=5, scale=0.3, linewidth=.5)
 
     # plot
     ax.set_title('Flowfield')
-    #ax.quiver(xi, -yi, Fx, Fy, units='xy', scale=.5, alpha=.5)
-    ax.quiver(xi, -yi, Fx, Fy, color=colors, units='xy', angles='xy', scale=scale, linewidth=linewidth, minshaft=2,headwidth=6, headlength=7)
-    #plt.colorbar(sm)
+    # ax.quiver(xi, -yi, Fx, Fy, units='xy', scale=.5, alpha=.5)
+    ax.quiver(xi, -yi, Fx, Fy, color=colors, units='xy', angles='xy', scale=scale, linewidth=linewidth, minshaft=2,
+              headwidth=6, headlength=7)
+    # plt.colorbar(sm)
     return ax

@@ -1,26 +1,18 @@
 import logging
-import os
 import random
 
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow.keras.layers as kl
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import Multiply
+from tensorflow.keras.models import Model
 
-import src
 import src.models.KerasLayers as ownkl
 import src.models.ModelUtils as mutils
-import tensorflow.keras.regularizers as regularizers
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Activation
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import Dropout
-from tensorflow.keras.layers import Multiply
-from tensorflow.keras.layers import Input
-from tensorflow.keras.layers import concatenate
-from tensorflow.keras.models import Model
-from tensorflow.keras.utils import multi_gpu_model
-from tensorflow.keras import backend as K
 
 # address some interface discrepancies when using tensorflow.keras
 # hack to use the load_from_json in tf otherwise we get an exception
@@ -44,7 +36,6 @@ if "slice" not in keras.backend.__dict__:
         # if that doesn't work we do a dirty copy of the code required
         import tensorflow as tf
         from tensorflow.python.framework import ops as tf_ops
-
 
         def is_tensor(x):
             return isinstance(x, tf_ops._TensorLike) or tf_ops.is_dense_tensor_like(x)
@@ -496,11 +487,10 @@ def create_2d_3d_avg_model(config, metrics=None, supervision=False):
 
 class Unet(tf.keras.Model):
 
-    def __init__(self, dim=[10,224,224], activation='elu', batch_norm=False, bn_first=False, depth=4, drop_3=0.5,
+    def __init__(self, dim=[10, 224, 224], activation='elu', batch_norm=False, bn_first=False, depth=4, drop_3=0.5,
                  dropouts=[0.2, 0.3, 0.4, 0.5], f_size=(3, 3, 3), filters=16,
                  kernel_init='he_normal', m_pool=(1, 2, 2), ndims=3, pad='same', use_upsample=True,
                  mask_classes=4, supervision=False):
-
         """
         Unet model as tf.keras subclass
         :param dim:
@@ -520,7 +510,6 @@ class Unet(tf.keras.Model):
         :param mask_classes:
         :param supervision:
         """
-
 
         super(self.__class__, self).__init__()
 
@@ -550,23 +539,24 @@ class Unet(tf.keras.Model):
 
         self.inputs = Input(shape=(*self.dim, 1))
 
-        self.enc = ownkl.ConvEncoder(activation=self.activation,batch_norm=self.batch_norm,bn_first=self.bn_first,
-                                     depth=self.depth,drop_3=self.drop_3,dropouts=self.dropouts,f_size=self.f_size,
-                                     filters=self.filters,kernel_init=self.kernel_init,m_pool=self.m_pool,ndims=self.ndims,pad=self.pad)
+        self.enc = ownkl.ConvEncoder(activation=self.activation, batch_norm=self.batch_norm, bn_first=self.bn_first,
+                                     depth=self.depth, drop_3=self.drop_3, dropouts=self.dropouts, f_size=self.f_size,
+                                     filters=self.filters, kernel_init=self.kernel_init, m_pool=self.m_pool,
+                                     ndims=self.ndims, pad=self.pad)
         self.dec = ownkl.ConvDecoder(activation=self.activation, batch_norm=self.batch_norm, bn_first=self.bn_first,
                                      depth=self.depth, drop_3=self.drop_3, dropouts=self.dropouts, f_size=self.f_size,
                                      filters=self.filters_decoder, kernel_init=self.kernel_init, up_size=self.m_pool,
                                      ndims=self.ndims, pad=self.pad)
 
         self.conv1 = Conv(filters=self.filters, kernel_size=f_size, kernel_initializer=self.kernel_init,
-                         padding=self.pad)
+                          padding=self.pad)
         self.drop1 = Dropout(drop_3)
         self.conv2 = Conv(filters=self.filters, kernel_size=f_size, kernel_initializer=self.kernel_init,
-                         padding=self.pad)
-        self.conv_one_by_one = Conv(mask_classes, one_by_one, padding=pad, kernel_initializer=kernel_init, activation=activation)
+                          padding=self.pad)
+        self.conv_one_by_one = Conv(mask_classes, one_by_one, padding=pad, kernel_initializer=kernel_init,
+                                    activation=activation)
 
         self.out = self.call(self.inputs)
-
 
     def call(self, x, training=None, mask=None):
         """
@@ -581,20 +571,18 @@ class Unet(tf.keras.Model):
         enc = self.conv1(enc)
         enc = self.drop1(enc)
         enc = self.conv2(enc)
-        dec = self.dec([enc,skips])
+        dec = self.dec([enc, skips])
         x = self.conv_one_by_one(dec)
         return x
-
 
     def summary(self):
         """
         Hack, overwrite the summary function to work with subclassed models
         This creates a model with a concrete output shape
-        and returns model().summary()
-        :return:
+        and enables model.summary()
+        :return: model().summary()
         """
         return Model(inputs=[self.inputs], outputs=self.call(self.inputs)).summary()
-
 
 
 def unet(activation, batch_norm, bn_first, depth, drop_3, dropouts, f_size, filters, inputs,
@@ -826,32 +814,19 @@ def unet_save(activation, batch_norm, bn_first, depth, drop_3, dropouts, f_size,
     return outputs
 
 
-def get_model(config=dict(), metrics=None):
-    """
-    create a new model or load a pre-trained model
-    :param config: json file
-    :param metrics: list of tensorflow or keras metrics with gt,pred
-    :return: returns a compiled keras model
-    """
-
-    # load a pre-trained model with config
-    if config.get('LOAD', False):
-        return load_pretrained_model(config, metrics)
-
-    # create a new 2D or 3D model with given config params
-    return create_unet(config, metrics)
-
-
 def test_unet():
     """
     Create a keras unet with a pre-configured config
     :return: prints model summary file
     """
     try:
-        from src.utils.utils_io import Console_and_file_logger
+        from src.utils.Utils_io import Console_and_file_logger
         Console_and_file_logger('test 2d network')
+        logging.error('Old config, please update!!!')
     except Exception as e:
         print("no logger defined, use print")
+        print('Old config, please update!!!')
+
 
     config = {'GPU_IDS': '0', 'GPUS': ['/gpu:0'], 'EXPERIMENT': '2D/tf2/temp', 'ARCHITECTURE': '2D',
               'DIM': [224, 224], 'DEPTH': 4, 'SPACING': [1.0, 1.0], 'M_POOL': [2, 2], 'F_SIZE': [3, 3],
@@ -869,7 +844,7 @@ def test_unet():
               'USE_UPSAMPLE': True, 'LOSS_FUNCTION': keras.losses.binary_crossentropy}
     metrics = [tf.keras.losses.categorical_crossentropy]
 
-    model = get_model(config, metrics)
+    model = create_unet(config, metrics)
     model.summary()
 
 

@@ -1,28 +1,20 @@
+import concurrent.futures
 import logging
-import platform
 import os
-import tensorflow as tf
-import tensorflow.keras
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import numpy as np
-import SimpleITK as sitk
-from skimage.transform import resize
-import matplotlib.pyplot as plt
-import tensorflow as tf
-import pandas as pd
-import random
+import platform
+from concurrent.futures import as_completed
 from time import time
 
-from src.visualization.Visualize import plot_3d_vol, show_slice, show_slice_transparent, plot_4d_vol, show_2D_or_3D
-from src.data.Preprocess import resample_3D, crop_to_square_2d, center_crop_or_resize_2d, \
-    clip_quantile, normalise_image, grid_dissortion_2D_or_3D, crop_to_square_2d_or_3d, center_crop_or_pad_2d_or_3d, \
-    transform_to_binary_mask, load_masked_img, random_rotate_2D_or_3D, random_rotate90_2D_or_3D, \
-    elastic_transoform_2D_or_3D, augmentation_compose_2D_or3D, pad_and_crop
-from src.data.Dataset import describe_sitk, get_t_position_from_filename, get_z_position_from_filename, \
-    get_patient, get_img_msk_files_from_split_dir
+import SimpleITK as sitk
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow.keras
 
-import concurrent.futures
-from concurrent.futures import as_completed
+from src.data.Dataset import describe_sitk
+from src.data.Preprocess import resample_3D, clip_quantile, normalise_image, grid_dissortion_2D_or_3D, \
+    transform_to_binary_mask, load_masked_img, random_rotate90_2D_or_3D, \
+    augmentation_compose_2D_or3D, pad_and_crop
+from src.visualization.Visualize import show_2D_or_3D
 
 
 class BaseGenerator(tensorflow.keras.utils.Sequence):
@@ -66,8 +58,8 @@ class BaseGenerator(tensorflow.keras.utils.Sequence):
         self.LIST_IDS = ids
 
         # if streamhandler loglevel is set to debug, print each pre-processing step
-        self.DEBUG_MODE = logging.getLogger().handlers[1].level==logging.DEBUG
-        #self.DEBUG_MODE = False
+        self.DEBUG_MODE = logging.getLogger().handlers[1].level == logging.DEBUG
+        # self.DEBUG_MODE = False
 
         # read the config, set default values if param not given
         self.SCALER = config.get('SCALER', 'MinMax')
@@ -86,7 +78,7 @@ class BaseGenerator(tensorflow.keras.utils.Sequence):
         self.MAX_WORKERS = config.get('GENERATOR_WORKER', self.BATCHSIZE)
         self.MAX_WORKERS = min(32, self.MAX_WORKERS)
         if self.DEBUG_MODE:
-            self.MAX_WORKERS = 1 # avoid parallelism when debugging, otherwise the blots are shuffled
+            self.MAX_WORKERS = 1  # avoid parallelism when debugging, otherwise the blots are shuffled
 
         if not hasattr(self, 'X_SHAPE'):
             self.X_SHAPE = np.empty((self.BATCHSIZE, *self.DIM, self.IMG_CHANNELS), dtype=np.float32)
@@ -208,9 +200,9 @@ class BaseGenerator(tensorflow.keras.utils.Sequence):
             try:
                 x_, y_, i, ID, needed_time = future.result()
                 if self.SINGLE_OUTPUT:
-                    x[i, ], _ = x_, y_
+                    x[i,], _ = x_, y_
                 else:
-                    x[i, ], y[i,] = x_, y_
+                    x[i,], y[i,] = x_, y_
                 logging.debug('img finished after {:0.3f} sec.'.format(needed_time))
             except Exception as e:
                 logging.error(
@@ -261,7 +253,8 @@ class DataGenerator(BaseGenerator):
                                    masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
         # load mask/ax2sax
         sitk_msk = load_masked_img(sitk_img_f=self.labels[ID], mask=self.MASKING_IMAGE,
-                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD, mask_labels=self.MASK_VALUES)
+                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD,
+                                   mask_labels=self.MASK_VALUES)
 
         self.__plot_state_if_debug__(sitk_img, sitk_msk, t0, 'raw')
         t1 = time()
@@ -272,10 +265,10 @@ class DataGenerator(BaseGenerator):
             # sitk.spacing has the opposite order than np.shape and tf.shape
             # we use the numpy order z, y, x
             old_spacing_img = list(reversed(sitk_img.GetSpacing()))
-            old_size_img = list(reversed(sitk_img.GetSize())) # after reverse: z, y, x
+            old_size_img = list(reversed(sitk_img.GetSize()))  # after reverse: z, y, x
 
             old_spacing_msk = list(reversed(sitk_msk.GetSpacing()))
-            old_size_msk = list(reversed(sitk_msk.GetSize())) # after reverse: z, y, x
+            old_size_msk = list(reversed(sitk_msk.GetSize()))  # after reverse: z, y, x
 
             if sitk_img.GetDimension() == 2:
                 x_s_img = (old_size_img[1] * old_spacing_img[1]) / self.SPACING[1]
@@ -300,7 +293,7 @@ class DataGenerator(BaseGenerator):
 
                 # we can also resize with the resamplefilter from sitk
                 # this cuts the image at the bottom and right
-                #new_size = self.DIM
+                # new_size = self.DIM
             else:
                 raise ('dimension not supported: {}'.format(sitk_img.GetDimension()))
 
@@ -317,10 +310,6 @@ class DataGenerator(BaseGenerator):
                 sitk_msk = resample_3D(sitk_img=sitk_msk, size=new_size_msk, spacing=list(reversed(self.SPACING)),
                                        interpolate=sitk.sitkLinear)
 
-
-
-
-
         logging.debug('Spacing after resample: {}'.format(sitk_img.GetSpacing()))
         logging.debug('Size after resample: {}'.format(sitk_img.GetSize()))
 
@@ -332,7 +321,7 @@ class DataGenerator(BaseGenerator):
         t1 = time()
 
         img_nda = normalise_image(img_nda, normaliser=self.SCALER)
-        if not self.MASKS: # yields the image two times for an autoencoder
+        if not self.MASKS:  # yields the image two times for an autoencoder
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
 
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, '{} normalized image:'.format(self.SCALER))
@@ -353,7 +342,7 @@ class DataGenerator(BaseGenerator):
             t1 = time()
 
         img_nda, mask_nda = map(lambda x: pad_and_crop(x, target_shape=self.DIM),
-                                                      [img_nda, mask_nda])
+                                [img_nda, mask_nda])
 
         img_nda = clip_quantile(img_nda, .9999)
         img_nda = normalise_image(img_nda, normaliser=self.SCALER)
@@ -362,7 +351,7 @@ class DataGenerator(BaseGenerator):
         # if masks are given, otherwise keep image as it is (for vae models, masks == False)
         if self.MASKS:
             mask_nda = transform_to_binary_mask(mask_nda, self.MASK_VALUES)
-        else:# yields two images
+        else:  # yields two images
             mask_nda = clip_quantile(mask_nda, .999)
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
             mask_nda = mask_nda[..., np.newaxis]
@@ -398,9 +387,9 @@ class CycleMotionDataGenerator(DataGenerator):
         """
 
         # Initialization
-        x = np.empty_like(self.X_SHAPE) # ax
-        y = np.empty_like(self.X_SHAPE) # axtosax
-        x2 = np.empty_like(self.X_SHAPE) # sax
+        x = np.empty_like(self.X_SHAPE)  # ax
+        y = np.empty_like(self.X_SHAPE)  # axtosax
+        x2 = np.empty_like(self.X_SHAPE)  # sax
         y2 = np.empty_like(self.X_SHAPE)  # saxtoax
         empty = np.empty_like(self.X_SHAPE)  # saxtoax modified
         futures = set()
@@ -425,7 +414,7 @@ class CycleMotionDataGenerator(DataGenerator):
             # use the indexes to order the batch
             # otherwise slower images will always be at the end of the batch
             try:
-                x_, y_, x2_,y2_, i, ID, needed_time = future.result()
+                x_, y_, x2_, y2_, i, ID, needed_time = future.result()
                 x[i,], y[i,], x2[i,], y2[i,] = x_, y_, x2_, y2_
                 logging.debug('img finished after {:0.3f} sec.'.format(needed_time))
             except Exception as e:
@@ -435,10 +424,10 @@ class CycleMotionDataGenerator(DataGenerator):
 
         logging.debug('Batchsize: {} preprocessing took: {:0.3f} sec'.format(self.BATCHSIZE, time() - t0))
 
-        ident = np.eye(4, dtype=np.float32)[:3,:]
+        ident = np.eye(4, dtype=np.float32)[:3, :]
         return tuple([[x.astype(np.float32), x2.astype(np.float32)],
-                  [y.astype(np.float32), y2.astype(np.float32), empty.astype(np.float32), empty.astype(np.float32),
-                   empty.astype(np.float32), ident, ident]])
+                      [y.astype(np.float32), y2.astype(np.float32), empty.astype(np.float32), empty.astype(np.float32),
+                       empty.astype(np.float32), ident, ident]])
 
     def __preprocess_one_image__(self, i, ID):
 
@@ -446,16 +435,16 @@ class CycleMotionDataGenerator(DataGenerator):
         # use the load_masked_img wrapper to enable masking of the images, not necessary for the TMI paper
         # load image
         sitk_ax = load_masked_img(sitk_img_f=self.images[ID], mask=self.MASKING_IMAGE,
-                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
+                                  masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
         # load ax2sax
         sitk_ax2sax = load_masked_img(sitk_img_f=self.labels[ID], mask=self.MASKING_IMAGE,
-                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
+                                      masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
         # load sax
         sitk_sax = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D', 'SAX_3D'),
                                    masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
         # load sax2ax
         sitk_sax2ax = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D', 'SAX_to_AX_3D'),
-                                masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
+                                      masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
 
         self.__plot_state_if_debug__(sitk_ax, sitk_ax2sax, t0, 'raw')
         t1 = time()
@@ -497,7 +486,8 @@ class CycleMotionDataGenerator(DataGenerator):
                 x_s_saxtoax3d = (old_size_saxtoax3d[2] * old_spacing_saxtoax3d[2]) / self.SPACING[2]
                 y_s_saxtoax3d = (old_size_saxtoax3d[1] * old_spacing_saxtoax3d[1]) / self.SPACING[1]
                 z_s_saxtoax3d = (old_size_saxtoax3d[0] * old_spacing_saxtoax3d[0]) / self.SPACING[0]
-                new_size_saxtoax3d = (int(np.round(x_s_saxtoax3d)), int(np.round(y_s_saxtoax3d)), int(np.round(z_s_saxtoax3d)))
+                new_size_saxtoax3d = (
+                    int(np.round(x_s_saxtoax3d)), int(np.round(y_s_saxtoax3d)), int(np.round(z_s_saxtoax3d)))
 
 
             else:
@@ -508,19 +498,19 @@ class CycleMotionDataGenerator(DataGenerator):
 
             # resample the image to given spacing increase/decrease the size according to new spacing
             sitk_ax = resample_3D(sitk_img=sitk_ax, size=new_size_img, spacing=list(reversed(self.SPACING)),
-                                   interpolate=sitk.sitkLinear)
+                                  interpolate=sitk.sitkLinear)
 
             # resample the image to given spacing and size
             sitk_sax = resample_3D(sitk_img=sitk_sax, size=new_size_sax3d, spacing=list(reversed(self.SPACING)),
                                    interpolate=sitk.sitkLinear)
 
             # resample the image to given spacing and size
-            sitk_sax2ax = resample_3D(sitk_img=sitk_sax2ax, size=new_size_saxtoax3d, spacing=list(reversed(self.SPACING)),
-                                   interpolate=sitk.sitkLinear)
+            sitk_sax2ax = resample_3D(sitk_img=sitk_sax2ax, size=new_size_saxtoax3d,
+                                      spacing=list(reversed(self.SPACING)),
+                                      interpolate=sitk.sitkLinear)
 
             sitk_ax2sax = resample_3D(sitk_img=sitk_ax2sax, size=new_size_msk, spacing=list(reversed(self.SPACING)),
-                                       interpolate=sitk.sitkLinear)
-
+                                      interpolate=sitk.sitkLinear)
 
         logging.debug('Spacing after resample: {}'.format(sitk_ax.GetSpacing()))
         logging.debug('Size after resample: {}'.format(sitk_ax.GetSize()))
@@ -544,8 +534,8 @@ class CycleMotionDataGenerator(DataGenerator):
         nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: normalise_image(x, normaliser=self.SCALER),
                                                       [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
-        nda_ax, nda_ax2sax,nda_sax, nda_sax2ax = map(lambda x: pad_and_crop(x, target_shape=self.DIM),
-                                                     [nda_ax, nda_ax2sax,nda_sax, nda_sax2ax])
+        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: pad_and_crop(x, target_shape=self.DIM),
+                                                      [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
         self.__plot_state_if_debug__(nda_ax, nda_ax2sax, t1, 'crop and pad')
 

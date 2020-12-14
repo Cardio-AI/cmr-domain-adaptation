@@ -1,15 +1,15 @@
-import os
 import json
 import logging
-from src.utils.Utils_io import Console_and_file_logger, ensure_dir
-from src.models.ModelUtils import load_pretrained_model
-import pandas as pd
+import os
 import platform
 
+import pandas as pd
+
+from src.models.ModelUtils import load_pretrained_model
+from src.utils.Utils_io import Console_and_file_logger
 
 
 def load_config(config_file_path, load=False):
-
     """
     Load a config file
     Try to load the corresponding model
@@ -20,14 +20,14 @@ def load_config(config_file_path, load=False):
 
     # create local namespace object
     glob_ = {}
-    
+
     with open(config_file_path, encoding='utf-8') as data_file:
         config = json.loads(data_file.read())
 
     # linux / windows paths
     if platform.system() == 'Linux':
-        config = dict([(key, value.replace('\\', '/')) if type(value) is str else (key, value) for key, value in config.items()])
-
+        config = dict(
+            [(key, value.replace('\\', '/')) if type(value) is str else (key, value) for key, value in config.items()])
 
     glob_['config'] = config
     Console_and_file_logger(config['EXPERIMENT'], logging.INFO)
@@ -37,7 +37,7 @@ def load_config(config_file_path, load=False):
         try:
             # load trainings history
             logging.info('loading trainings history...')
-            glob_['df_history'] = pd.read_csv(os.path.join(config['HISTORY_PATH'], 'history.csv'),index_col=0)
+            glob_['df_history'] = pd.read_csv(os.path.join(config['HISTORY_PATH'], 'history.csv'), index_col=0)
             logging.info('history {} loaded'.format(os.path.join(config['HISTORY_PATH'], 'history.csv')))
         except Exception as e:
             logging.info('No history found! --> {}'.format(os.path.join(config['HISTORY_PATH'], 'history.csv')))
@@ -51,18 +51,17 @@ def load_config(config_file_path, load=False):
             logging.info(str(e))
             # make sure we dont use earlier models
             glob_['model'] = None
-        
 
         try:
             # load past evaluations done with that model
             logging.info('loading past evaluation scores...')
             import_path = os.path.join('reports/evaluation', config['EXPERIMENT'])
-            #glob_['evaluation_score'] = pd.read_csv(os.path.join(import_path,'evaluation_score.csv')).set_index('Evaluation')
+            # glob_['evaluation_score'] = pd.read_csv(os.path.join(import_path,'evaluation_score.csv')).set_index('Evaluation')
             logging.info('past evaluation scores {} loaded'.format(os.path.join(import_path, 'evaluation_score.csv')))
         except Exception as e:
             # delete the evaluation score object from current namespace
             # if past models & evaluations have been done, to avoid mixing them up
-            #glob_['evaluation_score'] = None
+            # glob_['evaluation_score'] = None
             logging.info(str(e))
-    
+
     return glob_

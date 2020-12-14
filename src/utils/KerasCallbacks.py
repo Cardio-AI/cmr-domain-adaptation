@@ -1,22 +1,22 @@
-import os
 import io
 import logging
-import tensorflow
-import numpy as np
-from PIL import Image
+import os
+
 import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.callbacks import Callback
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
-from src.visualization.Visualize import plot_3d_vol
-from src.visualization.Visualize import show_slice_transparent as show_slice
-from src.utils.Utils_io import ensure_dir
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import TensorBoard
+
 from src.data.Preprocess import normalise_image
+from src.utils.Utils_io import ensure_dir
+from src.visualization.Visualize import show_slice_transparent as show_slice
 
 
-def get_callbacks(config={}, batch_generator=None, metrics=None):
+def get_callbacks(config=None, batch_generator=None, metrics=None, validation_generator=None):
     """
     :param config:
     :param validation_generator:
@@ -24,19 +24,19 @@ def get_callbacks(config={}, batch_generator=None, metrics=None):
     :return: list of callbacks for keras fit_generator
     """
 
+    if config is None:
+        config = {}
     callbacks = []
     ensure_dir(config['MODEL_PATH'])
 
     if batch_generator:
-
         callbacks.append(
             Ax2SaxWriter(log_dir=config['TENSORBOARD_LOG_DIR'],
                          image_freq=1,
                          val_gen=batch_generator,
                          flow=False,
                          dpi=200,
-                         f_size=[12,4]))
-
+                         f_size=[12, 4]))
 
     """callbacks.append(
         WeightsSaver(config.get('MODEL_PATH', 'temp/models'),
@@ -50,7 +50,8 @@ def get_callbacks(config={}, batch_generator=None, metrics=None):
                         mode=config.get('SAVE_MODEL_MODE', 'min'),
                         save_freq='epoch'))"""
     callbacks.append(
-        ModelCheckpoint(os.path.join(config['MODEL_PATH'], 'model.h5'),  # could also be 'model.h5 to save only the weights
+        ModelCheckpoint(os.path.join(config['MODEL_PATH'], 'model.h5'),
+                        # could also be 'model.h5 to save only the weights
                         verbose=1,
                         save_best_only=True,
                         save_weights_only=True,
@@ -92,8 +93,8 @@ def get_callbacks(config={}, batch_generator=None, metrics=None):
                       profile_batch=0,
                       embeddings_freq=0))
 
-    if metrics: # optimizer will be changed to SGD, if adam does not improve any more
-        # changer will call this method without metrics to avoid recursive learning
+    if metrics:  # optimizer will be changed to SGD, if adam does not improve any more
+        # This callback will call this method without metrics to avoid recursive learning
         logging.info('optimizer will be changed to SGD after adam does not improve any more')
         # idea based on: https://arxiv.org/pdf/1712.07628.pdf
         callbacks.append(
@@ -107,8 +108,8 @@ def get_callbacks(config={}, batch_generator=None, metrics=None):
                              monitor=config.get('MONITOR_FUNCTION', 'loss'),
                              mode=config.get('MONITOR_MODE', 'min')
                              )
-    )
-    else: # no metrics given, use early stopping callback to stop the training after 20 epochs
+        )
+    else:  # no metrics given, use early stopping callback to stop the training after 20 epochs
         callbacks.append(
             EarlyStopping(patience=config.get('MODEL_PATIENCE', 10),
                           verbose=1,
@@ -116,11 +117,10 @@ def get_callbacks(config={}, batch_generator=None, metrics=None):
                           mode=config.get('MONITOR_MODE', 'min'))
         )
 
-
     # add own learning lr sheduler, stepdecay and linear/polinomial decay is implemented
     learning_rate_shedule = PolynomialDecay(max_epochs=config.get('EPOCHS', 100),
                                             init_alpha=config.get('LEARNING_RATE', 1e-1), power=1)
-    #callbacks.append(LearningRateScheduler(learning_rate_shedule))
+    # callbacks.append(LearningRateScheduler(learning_rate_shedule))
 
     return callbacks
 
@@ -139,25 +139,6 @@ def feed_inputs_4_tensorboard(config, batch_generator=None, validation_generator
     feed = {}
     # training config includes the generator args
     generator_args = config
-
-    # build a feed dict for later tensorboard visualisation
-    # use special slices from the lower, middle and upper area
-    if config.get('ARCHITECTURE', '2D') == '2D':
-        feed['train_lower'] = get_samples(config['TRAIN_PATH'], samples=samples, part='lower',
-                                          generator_args=generator_args)
-        feed['val_lower'] = get_samples(config['VAL_PATH'], samples=samples, part='lower',
-                                        generator_args=generator_args)
-
-        feed['train_middle'] = get_samples(config['TRAIN_PATH'], samples=samples, part='middle',
-                                           generator_args=generator_args)
-        feed['val_middle'] = get_samples(config['VAL_PATH'], samples=samples, part='middle',
-                                         generator_args=generator_args)
-
-        feed['train_upper'] = get_samples(config['TRAIN_PATH'], samples=samples, part='upper',
-                                          generator_args=generator_args)
-        feed['val_upper'] = get_samples(config['VAL_PATH'], samples=samples, part='upper',
-                                        generator_args=generator_args)
-
     # use the batch- and validation-generator for the feeds
     if batch_generator is not None:
         x_t, y_t = batch_generator.__getitem__(0)
@@ -203,6 +184,7 @@ class PolynomialDecay:
         tensorflow.summary.scalar('learning rate', data=alpha, step=epoch)
 
         return float(alpha)
+
 
 class LRTensorBoard(TensorBoard):
     def __init__(self, log_dir, **kwargs):  # add other arguments to __init__ if you need
@@ -261,13 +243,13 @@ class TrainValTensorBoard(TensorBoard):
         super(TrainValTensorBoard, self).on_train_end(logs)
         self.val_writer.close()
 
-class OptimizerChanger(EarlyStopping):
 
+class OptimizerChanger(EarlyStopping):
     """
     Callback to switch the optimizer instead of early stopping the training
     """
 
-    def __init__(self, on_train_end, train_generator, val_generator, config, metrics,  **kwargs):
+    def __init__(self, on_train_end, train_generator, val_generator, config, metrics, **kwargs):
         self.do_on_train_end = on_train_end
         self.train_generator = train_generator
         self.val_generator = val_generator
@@ -294,7 +276,9 @@ class OptimizerChanger(EarlyStopping):
         """
 
         super(OptimizerChanger, self).on_train_end(logs)
-        self.do_on_train_end(self.config, self.train_generator, self.val_generator, self.model, self.metrics, self.current_epoch)
+        self.do_on_train_end(self.config, self.train_generator, self.val_generator, self.model, self.metrics,
+                             self.current_epoch)
+
 
 def finetune_with_SGD(config, train_g, val_g, model, metrics, epoch_init):
     """
@@ -307,11 +291,10 @@ def finetune_with_SGD(config, train_g, val_g, model, metrics, epoch_init):
     :return:
     """
     import tensorflow as tf
-    from src.utils.Metrics_own import dice_coef_labels_loss
     loss_f = config.get('LOSS_FUNCTION', tf.keras.metrics.binary_crossentropy)
-    #loss_f = dice_coef_labels_loss
+    # loss_f = dice_coef_labels_loss
     lr = config.get('LEARNING_RATE', 0.001)
-    #opt = tf.keras.optimizers.Adam(lr=lr)
+    # opt = tf.keras.optimizers.Adam(lr=lr)
     opt = tf.keras.optimizers.SGD(name='SGD')
     model.compile(optimizer=opt, loss=loss_f, metrics=metrics)
     model.fit(
@@ -324,6 +307,7 @@ def finetune_with_SGD(config, train_g, val_g, model, metrics, epoch_init):
         initial_epoch=epoch_init,
         workers=0,
         verbose=1)
+
 
 class SGDRScheduler(tf.keras.callbacks.Callback):
     '''Cosine annealing learning rate scheduler with periodic restarts.
@@ -349,13 +333,10 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
     # References
         Original paper: http://arxiv.org/abs/1608.03983
     '''
-    def __init__(self,
-                 min_lr,
-                 max_lr,
-                 lr_decay=1,
-                 cycle_length=10,
-                 mult_factor=2):
 
+    def __init__(self, min_lr, max_lr, lr_decay=1, cycle_length=10, mult_factor=2):
+
+        super().__init__()
         self.min_lr = min_lr
         self.max_lr = max_lr
         self.lr_decay = lr_decay
@@ -374,14 +355,19 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
         lr = self.min_lr + 0.5 * (self.max_lr - self.min_lr) * (1 + np.cos(fraction_to_restart * np.pi))
         return lr
 
-    def on_train_begin(self, logs={}):
+    def on_train_begin(self, logs=None):
         '''Initialize the learning rate to the minimum value at the start of training.'''
-        self.steps_per_epoch = self.params['steps'] if self.params['steps'] is not None else round(self.params['samples'] / self.params['batch_size'])
+        if logs is None:
+            logs = {}
+        self.steps_per_epoch = self.params['steps'] if self.params['steps'] is not None else round(
+            self.params['samples'] / self.params['batch_size'])
         logs = logs or {}
         tf.keras.backend.set_value(self.model.optimizer.lr, self.max_lr)
 
-    def on_batch_end(self, batch, logs={}):
+    def on_batch_end(self, batch, logs=None):
         '''Record previous batch statistics and update the learning rate.'''
+        if logs is None:
+            logs = {}
         logs = logs or {}
         self.history.setdefault('lr', []).append(tf.keras.backend.get_value(self.model.optimizer.lr))
         for k, v in logs.items():
@@ -390,8 +376,10 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
         self.batch_since_restart += 1
         tf.keras.backend.set_value(self.model.optimizer.lr, self.clr())
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
         '''Check for end of current cycle, apply restarts when necessary.'''
+        if logs is None:
+            logs = {}
         if epoch + 1 == self.next_restart:
             self.batch_since_restart = 0
             self.cycle_length = np.ceil(self.cycle_length * self.mult_factor)
@@ -399,9 +387,12 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
             self.max_lr *= self.lr_decay
             self.best_weights = self.model.get_weights()
 
-    def on_train_end(self, logs={}):
+    def on_train_end(self, logs=None):
         '''Set weights to the values from the end of the most recent cycle for best performance.'''
+        if logs is None:
+            logs = {}
         self.model.set_weights(self.best_weights)
+
 
 class CustomImageWritertf2(Callback):
 
@@ -413,7 +404,8 @@ class CustomImageWritertf2(Callback):
     # original code from:
     # https://stackoverflow.com/questions/43784921/how-to-display-custom-images-in-tensorboard-using-keras?rq=1
 
-    def __init__(self, log_dir='./logs/tmp/', image_freq=10, feed_inputs_4_display=None, flow=False, dpi=200,f_size=(5,5), interpol='bilinear'):
+    def __init__(self, log_dir='./logs/tmp/', image_freq=10, feed_inputs_4_display=None, flow=False, dpi=200,
+                 f_size=(5, 5), interpol='bilinear'):
 
         """
         This callback gets a dict with key: x,y entries
@@ -454,12 +446,16 @@ class CustomImageWritertf2(Callback):
     def make_image(self, figure):
 
         """
-        Create a tf.Summary.Image from an ndarray
-        :param numpy_img: Greyscale image with shape (x, y, 1)
-        :return:
+        Converts the matplotlib plot specified by 'figure' to a PNG image and
+          returns it. The supplied figure is closed and inaccessible after this call.
+        Parameters
+        ----------
+        figure : matplotlib.pyplot.Figure
+
+        Returns
+        -------
+
         """
-        """Converts the matplotlib plot specified by 'figure' to a PNG image and
-          returns it. The supplied figure is closed and inaccessible after this call."""
         # Save the plot to a PNG in memory.
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
@@ -563,7 +559,8 @@ class Ax2SaxWriter(Callback):
     # original code from:
     # https://stackoverflow.com/questions/43784921/how-to-display-custom-images-in-tensorboard-using-keras?rq=1
 
-    def __init__(self, log_dir='./logs/tmp/', image_freq=10, val_gen=None, flow=False, dpi=200,f_size=(5,5), interpol='bilinear'):
+    def __init__(self, log_dir='./logs/tmp/', image_freq=10, val_gen=None, flow=False, dpi=200, f_size=(5, 5),
+                 interpol='bilinear'):
 
         """
         This callback gets a dict with key: x,y entries
@@ -571,7 +568,6 @@ class Ax2SaxWriter(Callback):
         Afterwards it writes the image, gt and prediction into a summary file to make the learning visually in the Tensorboard
         :param log_dir: String, path - folder for the tensorboard summary file Imagewriter will create a subdir "images" for the imagesummary file
         :param image_freq: int - run this callback every n epoch to save disk space and increase speed
-        :param feed_inputs_4_display: dict {'train':(x_tensor,y_tensor), 'val' : (x_tensor. y_tensor)}
         x and ys to predict and visualise + key for summary description
         x_tensor and y_tensor have the shape n, x, y, 1 or classes for y, they are grouped by a key, eg. 'train', 'val'
         """
@@ -587,7 +583,7 @@ class Ax2SaxWriter(Callback):
         log_dir = os.path.join(log_dir, 'images')  # create a subdir for the imagewriter summary file
         ensure_dir(log_dir)
         self.writer = tensorflow.summary.create_file_writer(log_dir)
-        self.slice_by=3
+        self.slice_by = 3
 
         input_, output_ = val_gen.__getitem__(0)
         self.x = input_[0]
@@ -631,7 +627,7 @@ class Ax2SaxWriter(Callback):
 
     def on_train_begin(self, logs=None):
         # Call the image writer callback once before training
-        self.on_epoch_end(epoch=0,logs=logs)
+        self.on_epoch_end(epoch=0, logs=logs)
 
     def on_epoch_end(self, epoch, logs=None):
 
@@ -651,7 +647,7 @@ class Ax2SaxWriter(Callback):
             # xs and ys have the shape n, x, y, 1, they are grouped by the key
             # xs will have the shape: (len(keys), samples, z, x, y, 1)
             # need to reshape with len(keys) x samples
-            pred, inv_pred, ax2sax_mod, prob, ax_msk,m, m_mod = self.model.predict(x = [self.x,self.x2])
+            pred, inv_pred, ax2sax_mod, prob, ax_msk, m, m_mod = self.model.predict(x=[self.x, self.x2])
             from src.visualization.Visualize import show_2D_or_3D
             # create one tensorboard entry per key in feed_inputs_display
             pred_i = 0
@@ -660,28 +656,31 @@ class Ax2SaxWriter(Callback):
                     # xs and ys have the shape n, x, y, 1, they are grouped by the key
                     # count the samples provided by each key to sort them
                     tensorflow.summary.image(name='plot/{}/_AX2SAX_pred'.format(pred_i),
-                                                         data=self.make_image(
-                                                             show_2D_or_3D(p[::self.slice_by], ax2sax_msk[::self.slice_by], save=False, dpi=self.dpi, f_size=self.f_size,interpol=self.interpol)),
-                                                         step=epoch)
+                                             data=self.make_image(
+                                                 show_2D_or_3D(p[::self.slice_by], ax2sax_msk[::self.slice_by],
+                                                               save=False, dpi=self.dpi, f_size=self.f_size,
+                                                               interpol=self.interpol)),
+                                             step=epoch)
                     tensorflow.summary.image(name='plot/{}/_AX'.format(pred_i),
                                              data=self.make_image(
-                                                 show_2D_or_3D(x_[::self.slice_by], save=False, dpi=self.dpi, f_size=self.f_size,interpol=self.interpol)),
+                                                 show_2D_or_3D(x_[::self.slice_by], save=False, dpi=self.dpi,
+                                                               f_size=self.f_size, interpol=self.interpol)),
                                              step=epoch)
                     tensorflow.summary.image(name='plot/{}/_AX2SAX_gt'.format(pred_i),
                                              data=self.make_image(
-                                                 show_2D_or_3D(y_[::self.slice_by], save=False, dpi=self.dpi, f_size=self.f_size,interpol=self.interpol)),
+                                                 show_2D_or_3D(y_[::self.slice_by], save=False, dpi=self.dpi,
+                                                               f_size=self.f_size, interpol=self.interpol)),
                                              step=epoch)
 
                     """tensorflow.summary.image(name='plot/{}/{}/_ground_truth'.format(key, i),
                                                          data=self.make_image(
                                                              show_slice(img=x[i], mask=y[i], show=False)),
                                                          step=0)"""
-                    pred_i+=1
+                    pred_i += 1
 
             # del xs, ys, pred
 
             # self.writer.add_summary(tf.Summary(value=summary_str), global_step=self.e)
-
 
 
 class WeightsSaver(Callback):
@@ -698,16 +697,17 @@ class WeightsSaver(Callback):
 
     def on_epoch_end(self, epoch, logs={}):
         self.epoch_w += 1
-        #if self.epoch_w == 1:
-        if self.epoch_w % self.N == 0: # to save continous files
+        # if self.epoch_w == 1:
+        if self.epoch_w % self.N == 0:  # to save continous files
             # Save the model
-            tf.keras.models.save_model(self.model,filepath=self.model_path,overwrite=True,include_optimizer=False,save_format='tf')
+            tf.keras.models.save_model(self.model, filepath=self.model_path, overwrite=True, include_optimizer=False,
+                                       save_format='tf')
 
-            #model_json = self.model.to_json()
-            #model_path = self.model_path
-            #ensure_dir(model_path)
-            #self.model.save(model_path)
-            #with open(os.path.join(model_path, 'model.json'), "w") as json_file:
+            # model_json = self.model.to_json()
+            # model_path = self.model_path
+            # ensure_dir(model_path)
+            # self.model.save(model_path)
+            # with open(os.path.join(model_path, 'model.json'), "w") as json_file:
             #    json_file.write(model_json)
             # serialize weights to HDF5, could be done with ModelCheckpoint Callback
             # name = 'weights_e-{0}_val_loss-{1}.h5'.format(self.epoch_w, str(logs['val_loss'])[:4])

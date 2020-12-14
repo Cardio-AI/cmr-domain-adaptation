@@ -1,44 +1,39 @@
 import logging
-import sys
 import os
+import sys
+
 import SimpleITK as sitk
-from sklearn.preprocessing import MinMaxScaler
+import cv2
+import numpy as np
+from albumentations import GridDistortion, RandomRotate90, Compose, RandomBrightnessContrast, ElasticTransform
+from albumentations import ShiftScaleRotate
 from sklearn.preprocessing import RobustScaler
 from sklearn.preprocessing import StandardScaler
-from skimage.transform import resize
-from src.data.Dataset import describe_sitk, get_metadata_maybe
-import numpy as np
-from src.visualization.Visualize import plot_3d_vol
-from albumentations import GridDistortion, RandomRotate90, Compose, Flip, Transpose, OneOf, IAAAdditiveGaussianNoise, \
-    MotionBlur, MedianBlur, Blur, OpticalDistortion, IAAPiecewiseAffine, CLAHE, IAASharpen, IAAEmboss, \
-    RandomBrightnessContrast, HueSaturationValue, ElasticTransform, CenterCrop, PadIfNeeded, RandomBrightness
-from albumentations import ShiftScaleRotate
-from albumentations.augmentations.transforms import Rotate, GaussNoise
-import cv2
-from src.data.Dataset import copy_meta
-from albumentations.augmentations.transforms import PadIfNeeded
+
+from src.data.Dataset import get_metadata_maybe
 
 
-def load_masked_img(sitk_img_f, mask=False, masking_values = [1,2,3], replace=('img','msk'), mask_labels=[0,1,2,3]):
-                
+def load_masked_img(sitk_img_f, mask=False, masking_values=None, replace=('img', 'msk'), mask_labels=None):
     """
     opens an sitk image, mask it if mask = True and masking values are given
     """
 
+    if mask_labels is None:
+        mask_labels = [0, 1, 2, 3]
+    if masking_values is None:
+        masking_values = [1, 2, 3]
     sitk_mask_f = sitk_img_f.replace(replace[0], replace[1])
 
-                
     assert os.path.isfile(sitk_img_f), 'no valid image: {}'.format(sitk_img_f)
-                
+
     img_original = sitk.ReadImage(sitk_img_f, sitk.sitkFloat32)
-    
-                
+
     if mask:
         msk_original = sitk.ReadImage(sitk_mask_f, sitk.sitkFloat32)
-        
+
         img_nda = sitk.GetArrayFromImage(img_original)
         msk_nda = transform_to_binary_mask(sitk.GetArrayFromImage(msk_original), mask_values=mask_labels)
-                    
+
         # mask by different labels, sum up all masked channels
         temp = np.zeros(img_nda.shape)
         for c in masking_values:
@@ -52,80 +47,10 @@ def load_masked_img(sitk_img_f, mask=False, masking_values = [1,2,3], replace=('
             sitk_img.SetMetaData(tag, value)
         sitk_img.SetSpacing(img_original.GetSpacing())
         sitk_img.SetOrigin(img_original.GetOrigin())
-                    
+
         img_original = sitk_img
-                
+
     return img_original
-
-
-def filter_small_vectors_batch(flowfield_3d, normalize=True, thresh_z=(-0.5, 0.5), thresh_x=(-2.5, 1.5),
-                               thresh_y=(-1.5, 1.0)):
-    """
-    wrapper to detect input shape, works with 3d volume of flows
-    Expect a numpy array with shape z,x,y,c, return the same shape
-    All vector smaller or bigger than the given thresholds (tuples) will be set to the flowfield minimum
-    :param flowfield_3d:
-    :return:
-    """
-
-    if flowfield_3d.ndim == 4:
-        # traverse through the z axis and filter each 2d slice independently
-        filtered = [
-            filter_small_vectors_2d(f, normalize=normalize, thresh_z=thresh_z, thresh_x=thresh_x, thresh_y=thresh_y)
-            for f in flowfield_3d]
-        return np.stack(filtered, axis=0)
-
-    elif flowfield_3d.ndim == 3:  # 2d slice with 3d vectors
-        return filter_small_vectors_2d(flowfield_3d, normalize=normalize, thresh_z=thresh_z, thresh_x=thresh_x,
-                                       thresh_y=thresh_y)
-
-    else:
-        # returns the input without changes
-        logging.error('dimension: {} not supported'.format(flowfield_3d.ndim))
-        return flowfield_3d
-
-
-def filter_small_vectors_2d(flowfield_2d, normalize=True, thresh_z=(-0.7, 0.7), thresh_x=(-2.5, 1.5),
-                            thresh_y=(-1.5, 1.0)):
-    """
-    Expect a numpy array with shape z,x,y,c, return the same shape
-    All vector smaller or bigger than the given thresholds (tuples) will be set to the flowfield minimum
-    :param flowfield_3d:
-    :return:
-    """
-    flow_min = flowfield_2d.min()
-
-    if not normalize:
-        flow_min = 0
-
-    if flowfield_2d.shape[-1] == 3:  # 3d vectors
-        flow_z = flowfield_2d[..., 0].copy()
-        flow_x = flowfield_2d[..., 1].copy()
-        flow_y = flowfield_2d[..., 2].copy()
-    elif flowfield_2d.shape[-1] == 2:
-        flow_x = flowfield_2d[..., 0].copy()
-        flow_y = flowfield_2d[..., 1].copy()
-        # create a fake 3rd dimension to work with rgb, set value to minimal flowfield value
-        flow_z = np.full_like(flow_x, flow_min)
-
-    else:
-        logging.error('vector shape not supported')
-        return flowfield_2d
-
-    # filter small z movements
-    flow_z[(flow_z > thresh_z[0]) & (flow_z < thresh_z[1])] = flow_min
-    # filter small x movements
-    flow_x[(flow_x > thresh_x[0]) & (flow_x < thresh_x[1])] = flow_min
-    # filter small y movements
-    flow_y[(flow_y > thresh_y[0]) & (flow_y < thresh_y[1])] = flow_min
-    flow_ = np.stack([flow_z, flow_x, flow_y], axis=-1)
-
-    if normalize:
-        # normalize values in the scale of 0 -1 small values will result as 0
-        return normalise_image(flow_)
-    else:
-        return flow_
-
 
 def resample_3D(sitk_img, size=(256, 256, 12), spacing=(1.25, 1.25, 8), interpolate=sitk.sitkNearestNeighbor):
     """
@@ -146,8 +71,8 @@ def resample_3D(sitk_img, size=(256, 256, 12), spacing=(1.25, 1.25, 8), interpol
 
     assert (isinstance(sitk_img, sitk.Image)), 'wrong image type: {}'.format(type(sitk_img))
 
-    #if len(size) == 3 and size[0] < size[-1]: # 3D data, but numpy shape and size, reverse order for sitk
-        # bug if z is lonnger than x or y
+    # if len(size) == 3 and size[0] < size[-1]: # 3D data, but numpy shape and size, reverse order for sitk
+    # bug if z is lonnger than x or y
     #    size = tuple(reversed(size))
     #    spacing = tuple(reversed(spacing))
 
@@ -164,6 +89,7 @@ def resample_3D(sitk_img, size=(256, 256, 12), spacing=(1.25, 1.25, 8), interpol
         return resampled
     else:
         return sitk.GetArrayFromImage(resampled)
+
 
 def random_rotate90_2D_or_3D(img, mask, probabillity=0.8):
     logging.debug('random rotate for: {}'.format(img.shape))
@@ -208,8 +134,8 @@ def random_rotate90_2D_or_3D(img, mask, probabillity=0.8):
         aug = RandomRotate90(p=probabillity)
         params = aug.get_params()
         for z in range(img.shape[0]):
-            images.append(aug.apply(img[z, ...], interpolation=cv2.INTER_LINEAR, factor=1,**params))
-            masks.append(aug.apply(mask[z, ...], interpolation=cv2.INTER_NEAREST, factor=1,**params))
+            images.append(aug.apply(img[z, ...], interpolation=cv2.INTER_LINEAR, factor=1, **params))
+            masks.append(aug.apply(mask[z, ...], interpolation=cv2.INTER_NEAREST, factor=1, **params))
 
         augmented['image'] = np.stack(images, axis=0)
         augmented['mask'] = np.stack(masks, axis=0)
@@ -220,8 +146,9 @@ def random_rotate90_2D_or_3D(img, mask, probabillity=0.8):
 
     return augmented['image'], augmented['mask']
 
+
 def augmentation_compose_2D_or3D(img, mask, target_dim, probabillity=1, spatial_transforms=True):
-    #logging.debug('random rotate for: {}'.format(img.shape))
+    # logging.debug('random rotate for: {}'.format(img.shape))
     augmented = {'image': None, 'mask': None}
 
     if isinstance(img, sitk.Image):
@@ -255,14 +182,15 @@ def augmentation_compose_2D_or3D(img, mask, target_dim, probabillity=1, spatial_
         data = {"image": img[0], "mask": mask[0]}
 
         for z in range(img.shape[0]):
-            data['{}{}'.format(img_placeholder,z)] = img[z,...]
+            data['{}{}'.format(img_placeholder, z)] = img[z, ...]
             data['{}{}'.format(mask_placeholder, z)] = mask[z, ...]
-            targets['{}{}'.format(img_placeholder,z)] = 'image'
+            targets['{}{}'.format(img_placeholder, z)] = 'image'
             targets['{}{}'.format(mask_placeholder, z)] = 'mask'
     if spatial_transforms:
         aug = _create_aug_compose(p=probabillity, pad=max(img.shape[-2:]), target_dim=target_dim, targets=targets)
     else:
-        aug = _create_aug_compose_only_brightness(p=probabillity, pad=max(img.shape[-2:]), target_dim=target_dim, targets=targets)
+        aug = _create_aug_compose_only_brightness(p=probabillity, pad=max(img.shape[-2:]), target_dim=target_dim,
+                                                  targets=targets)
 
     augmented = aug(**data)
 
@@ -270,27 +198,29 @@ def augmentation_compose_2D_or3D(img, mask, target_dim, probabillity=1, spatial_
         images = []
         masks = []
         for z in range(img.shape[0]):
-            images.append(augmented['{}{}'.format(img_placeholder,z)])
+            images.append(augmented['{}{}'.format(img_placeholder, z)])
             masks.append(augmented['{}{}'.format(mask_placeholder, z)])
-        augmented['image'] = np.stack(images,axis=0)
+        augmented['image'] = np.stack(images, axis=0)
         augmented['mask'] = np.stack(masks, axis=0)
 
     return augmented['image'], augmented['mask']
 
 
-def _create_aug_compose_only_brightness(p=1, pad=256,target_dim=(256,256), targets={}):
+def _create_aug_compose_only_brightness(p=1, pad=256, target_dim=(256, 256), targets=None):
+    if targets is None:
+        targets = {}
     return Compose([
         # RandomRotate90(p=0.3),
-        #Flip(0.1),
-        #Transpose(p=0.1),
+        # Flip(0.1),
+        # Transpose(p=0.1),
         # ShiftScaleRotate(p=0.8, rotate_limit=0,shift_limit=0.025, scale_limit=0.1,value=0, border_mode=cv2.BORDER_CONSTANT),
         # GridDistortion(p=0.8, value=0,border_mode=cv2.BORDER_CONSTANT),
-        #PadIfNeeded(min_height=pad, min_width=pad, border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0, p=1),
-        #CenterCrop(height=target_dim[0], width=target_dim[1], p=1),
+        # PadIfNeeded(min_height=pad, min_width=pad, border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0, p=1),
+        # CenterCrop(height=target_dim[0], width=target_dim[1], p=1),
         # ToFloat(max_value=100,p=1),
         # HueSaturationValue(p=1)
-        RandomBrightnessContrast(brightness_limit=0.05,contrast_limit=0.05,always_apply=True)
-        #RandomBrightness(limit=0.1,p=1),
+        RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, always_apply=True)
+        # RandomBrightness(limit=0.1,p=1),
         # GaussNoise(mean=image.mean(),p=1)
         # OneOf([
         # OpticalDistortion(p=1),
@@ -299,19 +229,23 @@ def _create_aug_compose_only_brightness(p=1, pad=256,target_dim=(256,256), targe
     ], p=p,
         additional_targets=targets)
 
-def _create_aug_compose(p=1, pad=256,target_dim=(256,256), targets={}):
+
+def _create_aug_compose(p=1, pad=256, target_dim=(256, 256), targets=None):
+    if targets is None:
+        targets = {}
     return Compose([
         RandomRotate90(p=0.3),
-        #Flip(0.1),
-        #Transpose(p=0.1),
-        ShiftScaleRotate(p=0.8, rotate_limit=0,shift_limit=0.025, scale_limit=0.1,value=0, border_mode=cv2.BORDER_CONSTANT),
-        GridDistortion(p=0.8, value=0,border_mode=cv2.BORDER_CONSTANT),
-        #PadIfNeeded(min_height=pad, min_width=pad, border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0, p=1),
-        #CenterCrop(height=target_dim[0], width=target_dim[1], p=1),
+        # Flip(0.1),
+        # Transpose(p=0.1),
+        ShiftScaleRotate(p=0.8, rotate_limit=0, shift_limit=0.025, scale_limit=0.1, value=0,
+                         border_mode=cv2.BORDER_CONSTANT),
+        GridDistortion(p=0.8, value=0, border_mode=cv2.BORDER_CONSTANT),
+        # PadIfNeeded(min_height=pad, min_width=pad, border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0, p=1),
+        # CenterCrop(height=target_dim[0], width=target_dim[1], p=1),
         # ToFloat(max_value=100,p=1),
         # HueSaturationValue(p=1)
-        RandomBrightnessContrast(brightness_limit=0.05,contrast_limit=0.05,always_apply=True)
-        #RandomBrightness(limit=0.1,p=1),
+        RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, always_apply=True)
+        # RandomBrightness(limit=0.1,p=1),
         # GaussNoise(mean=image.mean(),p=1)
         # OneOf([
         # OpticalDistortion(p=1),
@@ -320,8 +254,8 @@ def _create_aug_compose(p=1, pad=256,target_dim=(256,256), targets={}):
     ], p=p,
         additional_targets=targets)
 
-def random_rotate_2D_or_3D(img, mask, probabillity=0.8, shift_limit=0.0625, scale_limit=0.0, rotate_limit=0):
 
+def random_rotate_2D_or_3D(img, mask, probabillity=0.8, shift_limit=0.0625, scale_limit=0.0, rotate_limit=0):
     """
     Rotate, shift and scale an image within a given range
     :param img: numpy.ndarray
@@ -426,7 +360,7 @@ def grid_dissortion_2D_or_3D(img, mask, probabillity=0.8, border_mode=cv2.BORDER
 
     if img.ndim is 2:
         # apply grid augmentation on 2d data
-        aug = GridDistortion(p=probabillity,border_mode=border_mode,mask_value=0, value=0)
+        aug = GridDistortion(p=probabillity, border_mode=border_mode, mask_value=0, value=0)
         if is_y_mask:
             augmented = aug(image=img, mask=mask)
         else:
@@ -439,11 +373,11 @@ def grid_dissortion_2D_or_3D(img, mask, probabillity=0.8, border_mode=cv2.BORDER
         images = []
         masks = []
 
-        aug = GridDistortion(p=probabillity,border_mode=border_mode)
+        aug = GridDistortion(p=probabillity, border_mode=border_mode)
         steps = aug.get_params()
         for z in range(img.shape[0]):
-            images.append(aug.apply(img[z,...], steps['stepsx'], steps['stepsy'], interpolation=y_interpolation))
-            masks.append(aug.apply(mask[z,...], steps['stepsx'], steps['stepsy'], interpolation=y_interpolation))
+            images.append(aug.apply(img[z, ...], steps['stepsx'], steps['stepsy'], interpolation=y_interpolation))
+            masks.append(aug.apply(mask[z, ...], steps['stepsx'], steps['stepsy'], interpolation=y_interpolation))
 
         augmented['image'] = np.stack(images, axis=0)
         augmented['mask'] = np.stack(masks, axis=0)
@@ -453,6 +387,7 @@ def grid_dissortion_2D_or_3D(img, mask, probabillity=0.8, border_mode=cv2.BORDER
         raise ('Wrong shape Exception in: {}'.format('show_2D_or_3D()'))
 
     return augmented['image'], augmented['mask']
+
 
 def elastic_transoform_2D_or_3D(img, mask, probabillity=0.8):
     """
@@ -486,7 +421,8 @@ def elastic_transoform_2D_or_3D(img, mask, probabillity=0.8):
     if img.ndim is 2:
 
         # apply grid augmentation on 2d data
-        aug = ElasticTransform(p=1, alpha=120, sigma=120 * 0.09, alpha_affine=120 * 0.08,border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0)
+        aug = ElasticTransform(p=1, alpha=120, sigma=120 * 0.09, alpha_affine=120 * 0.08,
+                               border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0)
         augmented = aug(image=img, mask=mask)
 
     elif img.ndim is 3:
@@ -495,11 +431,12 @@ def elastic_transoform_2D_or_3D(img, mask, probabillity=0.8):
         images = []
         masks = []
 
-        aug = ElasticTransform(p=1, alpha=120, sigma=120 * 0.09, alpha_affine=120 * 0.08,border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0)
+        aug = ElasticTransform(p=1, alpha=120, sigma=120 * 0.09, alpha_affine=120 * 0.08,
+                               border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0)
         steps = aug.get_params()
         for z in range(img.shape[0]):
-            images.append(aug.apply(img[z,...], steps['stepsx'], steps['stepsy'], interpolation=cv2.INTER_LINEAR))
-            masks.append(aug.apply(mask[z,...], steps['stepsx'], steps['stepsy'], interpolation=cv2.INTER_NEAREST))
+            images.append(aug.apply(img[z, ...], steps['stepsx'], steps['stepsy'], interpolation=cv2.INTER_LINEAR))
+            masks.append(aug.apply(mask[z, ...], steps['stepsx'], steps['stepsy'], interpolation=cv2.INTER_NEAREST))
 
         augmented['image'] = np.stack(images, axis=0)
         augmented['mask'] = np.stack(masks, axis=0)
@@ -511,221 +448,11 @@ def elastic_transoform_2D_or_3D(img, mask, probabillity=0.8):
     return augmented['image'], augmented['mask']
 
 
-
-def crop_to_square_2d_or_3d(img_nda, mask_nda, image_type='nda'):
-    """
-    Wrapper for 2d and 3d image/mask support
-    :param img_nda:
-    :param mask_nda:
-    :return:
-    """
-
-    if isinstance(img_nda, sitk.Image):
-        image_type = 'sitk'
-        reference_img = img_nda
-        img_nda = sitk.GetArrayFromImage(img_nda).astype(np.float32)
-
-    if isinstance(mask_nda, sitk.Image):
-        mask_nda = sitk.GetArrayFromImage(mask_nda).astype(np.float32)
-
-    # dont print anything if no images nor masks are given
-    if img_nda is None and mask_nda is None:
-        logging.error('No image data given')
-        raise ('No image data given in grid dissortion')
-
-    # replace mask with empty slice if none is given
-    if mask_nda is None:
-        mask_nda = np.zeros(img_nda.shape)
-
-    # replace image with empty slice if none is given
-    if img_nda is None:
-        img_nda = np.zeros(mask_nda.shape)
-
-    if img_nda.ndim is 2:
-        crop = crop_to_square_2d
-
-    elif img_nda.ndim is 3:
-        crop = crop_to_square_3d
-
-    if image_type == 'sitk':
-        # return a sitk.Image with all metadata as the uncroped image
-        img, msk = crop(img_nda, mask_nda)
-        return copy_meta(img,reference_img), copy_meta(msk, reference_img)
-
-    return crop(img_nda, mask_nda)
-
-
-def crop_to_square_3d(img_nda, mask_nda):
-    """
-    crop 3d numpy image/mask to square, croptthe longer side
-    individual square cropping for image pairs such as used for ax2sax transformation
-    :param img_nda:
-    :param mask_nda:
-    :return:
-    """
-    h, w = img_nda.shape[-2:]  # numpy shape has different order than sitk
-    logging.debug('shape: {}'.format(img_nda.shape))
-    if h != w:
-        margin = (h - w) // 2
-
-        # crop width if width > height
-        if margin > 0:  # height is bigger than width, crop height
-            logging.debug('margin: {}'.format(margin))
-            img_nda = img_nda[:, margin:-margin, :]
-            img_nda = img_nda[:, :w, :]  # make sure no ceiling errors
-
-        elif margin < 0:  # width is bigger than height, crop width
-            margin = -margin
-            img_nda = img_nda[..., margin:-margin]
-            img_nda = img_nda[..., :h]
-
-    h, w = mask_nda.shape[-2:]  # numpy shape has different order than sitk
-    logging.debug('shape: {}'.format(img_nda.shape))
-    if h != w:
-        margin = (h - w) // 2
-
-        # crop width if width > height
-        if margin > 0:  # height is bigger than width, crop height
-            logging.debug('margin: {}'.format(margin))
-            mask_nda = mask_nda[:, margin:-margin, :]
-            mask_nda = mask_nda[:, :w, :]
-
-        elif margin < 0:  # width is bigger than height, crop width
-            margin = -margin
-            mask_nda = mask_nda[..., margin:-margin]
-            mask_nda = mask_nda[..., :h]
-
-    return img_nda, mask_nda
-
-def crop_to_square_3d_same_shape(img_nda, mask_nda):
-    """
-    crop 3d numpy image/mask to square, croptthe longer side
-    Works only if img and mask have the same shape
-    :param img_nda:
-    :param mask_nda:
-    :return:
-    """
-    h, w = img_nda.shape[-2:]  # numpy shape has different order than sitk
-    logging.debug('shape: {}'.format(img_nda.shape))
-    if h != w:
-        margin = (h - w) // 2
-
-        # crop width if width > height
-        if margin > 0:  # height is bigger than width, crop height
-            logging.debug('margin: {}'.format(margin))
-            img_nda = img_nda[:, margin:-margin, :]
-            img_nda = img_nda[:, :w, :]  # make sure no rounding errors
-            mask_nda = mask_nda[:, margin:-margin, :]
-            mask_nda = mask_nda[:, :w, :]
-
-        elif margin < 0:  # width is bigger than height, crop width
-            margin = -margin
-            img_nda = img_nda[..., margin:-margin]
-            mask_nda = mask_nda[..., margin:-margin]
-            img_nda = img_nda[..., :h]
-            mask_nda = mask_nda[..., :h]
-
-    return img_nda, mask_nda
-
-
-def crop_to_square_2d(img_nda, mask_nda):
-    """
-    center crop image and mask to square
-    :param img_nda:
-    :param mask_nda:
-    :return:
-    """
-
-    h, w = mask_nda.shape[:2]
-    # identify if width or height is bigger
-    if h != w:
-        margin = (h - w) // 2
-        # crop width if width > height
-        if margin > 0: # height > width, crop height
-            img_nda = img_nda[margin:-margin, :]
-            mask_nda = mask_nda[margin:-margin, :]
-        elif margin < 0: # width > height, crop width
-            margin = -margin
-            img_nda = img_nda[:, margin:-margin]
-            mask_nda = mask_nda[:, margin:-margin]
-
-    return img_nda, mask_nda
-
-
-def crop_center_2d(img, cropx, cropy):
-    y, x = img.shape[:2]
-    startx = x // 2 - (cropx // 2)
-    starty = y // 2 - (cropy // 2)
-    return img[starty:starty + cropy, startx:startx + cropx, ...]
-
-
-def crop_center_3d(img, cropz, cropx, cropy):
-    """
-    Crop z from zero to size
-    Center crop x and y
-    :param img:
-    :param cropz:
-    :param cropx:
-    :param cropy:
-    :return:
-    """
-    z, y, x = img.shape # get size of the last three axis
-    logging.debug('image shape at the beginning of crop_center: {}\n cropx : {}'.format(img.shape, cropx))
-    if cropx >= x and cropy >= y and cropz < z: # if x and y  are smaller than the desired x,y dont crop
-        logging.debug('Just crop z')
-        start_z = int(np.round((z - cropz)/2))
-        return img[start_z:start_z + cropz, ...] # crop only z
-    else:
-        startz = int(np.round((z - cropz)/2))
-        startx = int(np.round((x - cropx)/2))
-        starty = int(np.round((y - cropy)/2))
-        return img[startz:startz + cropz, starty:starty + cropy, startx:startx + cropx]
-
-
-def center_crop_or_pad_2d_or_3d(img_nda, mask_nda, dim):
-    """
-
-    :param img:
-    :param mask:
-    :param dim:
-    :return:
-    """
-
-    if isinstance(img_nda, sitk.Image):
-        img_nda = sitk.GetArrayFromImage(img_nda).astype(np.float32)
-
-    if isinstance(mask_nda, sitk.Image):
-        mask_nda = sitk.GetArrayFromImage(mask_nda).astype(np.float32)
-
-    # dont print anything if no images nor masks are given
-    if img_nda is None and mask_nda is None:
-        logging.error('No image data given')
-        raise ('No image data given in center_crop_or_resize')
-
-    # replace mask with empty slice if none is given
-    if mask_nda is None:
-        mask_nda = np.zeros(img_nda.shape)
-
-    # replace image with empty slice if none is given
-    if img_nda is None:
-        img_nda = np.zeros(mask_nda.shape)
-
-    if img_nda.ndim is 2:
-        crop = center_crop_or_pad_2d
-
-    elif img_nda.ndim is 3:
-        crop = center_crop_or_pad_3d
-    else:
-        raise NotImplementedError('Dim: {} not supported'.format(img_nda.ndim))
-
-    return crop(img_nda, mask_nda, dim)
-
-
 def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
     """
     Center pad and crop a np.ndarray with any shape to a given target shape
     Parameters
-    Pad and crop must be the complementary
+    In this implementation the pad and crop is invertible, ceil and round respects uneven shapes
     pad = floor(x),floor(x)+1
     crop = floor(x)+1, floor(x)
     ----------
@@ -747,7 +474,9 @@ def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
     # take the same numbers for left or right padding/cropping if the difference is dividable by 2
     # else take floor(x),floor(x)+1 for PAD (diff<0)
     # else take floor(x)+1, floor(x) for CROP (diff>0)
-    d = list((int(x // 2), int(x // 2)) if x % 2 == 0 else (int(np.floor(x / 2)), int(np.floor(x / 2) + 1)) if x<0 else (int(np.floor(x / 2)+1), int(np.floor(x / 2))) for x in diff)
+    d = list(
+        (int(x // 2), int(x // 2)) if x % 2 == 0 else (int(np.floor(x / 2)), int(np.floor(x / 2) + 1)) if x < 0 else (
+            int(np.floor(x / 2) + 1), int(np.floor(x / 2))) for x in diff)
     # replace the second slice parameter if it is None, which slice until end of ndarray
     d = list((abs(x), abs(y)) if y != 0 else (abs(x), None) for x, y in d)
     # create a bool list, negative numbers --> pad, else --> crop
@@ -769,192 +498,7 @@ def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
     return empty
 
 
-def center_crop_or_resize_3d(img_nda, mask_nda, dim):
-    """
-    center crop to given size, check if bigger or smaller
-    requires square shape as input
-    skimage resize takes the order parameter which defines the interpolation
-        0: Nearest-neighbor
-        1: Bi-linear (default)
-        2: Bi-quadratic
-        3: Bi-cubic
-        4: Bi-quartic
-        5: Bi-quintic
-    img nda is a ndarray or tensor with z, y, x
-
-    :param img_nda: numpy array
-    :param mask_nda: numpy array
-    :param dim: 2-3
-    :return:
-    """
-    resized_by = 'no resize'
-    # center crop in z
-    # center crop slice by slice to given size, check if bigger or smaller
-    # nda is already in inplane square resolution, need to check only x
-    if (img_nda.shape[2] > dim[2] or img_nda.shape[0] > dim[0]):  # if nda bigger than wished output, crop, else resize
-        resized_by = 'center crop'
-        img_nda = crop_center_3d(img_nda, dim[0], dim[1], dim[2])
-    if (mask_nda.shape[2] > dim[2] or mask_nda.shape[0] > dim[0]):  # if nda bigger than wished output, crop, else resize
-        resized_by = 'center crop'
-        mask_nda = crop_center_3d(mask_nda, dim[0], dim[1], dim[2])
-
-    if img_nda.shape[2] < dim[2]: # sometimes we have a volume which should be cropped along z but resized along x and y
-        resized_by = 'skimage resize'
-        logging.debug('image too small, need to resize slice wise')
-        logging.debug('image size: {}'.format(img_nda.shape))
-        # resize
-        imgs = []
-        for img in img_nda:
-            imgs.append(resize(img, dim[1:], mode='constant', preserve_range=True, order=3,anti_aliasing=True, clip=True))
-        # pad along z
-        img_nda = np.stack(imgs, axis=0)
-    if mask_nda.shape[2] < dim[2]:  # sometimes we have a volume which should be cropped along z but resized along x and y
-        resized_by = 'skimage resize'
-        logging.debug('image too small, need to resize slice wise')
-        logging.debug('image size: {}'.format(img_nda.shape))
-
-        # resize
-        masks = []
-        for mask in mask_nda:
-            masks.append(
-                resize(mask, dim[1:], mode='constant', anti_aliasing=False, preserve_range=True, order=0, cval=0,
-                       clip=True).astype(mask_nda.dtype))
-        mask_nda = np.stack(masks, axis=0)
-
-    return img_nda, mask_nda, resized_by
-
-
-def center_crop_or_pad_3d(img_nda, mask_nda, dim):
-    """
-    center crop to given size, check if bigger or smaller
-    requires square shape as input
-    pad with zero if image is too small
-    img nda is a ndarray or tensor with z, y, x
-
-    :param img_nda: numpy array
-    :param mask_nda: numpy array
-    :param dim: 2-3
-    :return:
-    """
-    resized_by = 'no pad'
-    temp = np.zeros(dim)
-    # first pad image
-    if img_nda.shape[2] < dim[2] or img_nda.shape[1] < dim[1] or img_nda.shape[0] < dim[0]:  # sometimes we have a volume which should be cropped along z but padded along x and y
-        resized_by = 'zero pad'
-        logging.debug('image size: {}'.format(img_nda.shape))
-        # pad inplane
-        imgs = []
-        aug = PadIfNeeded(p=1.0,min_height=dim[1],min_width=dim[2],border_mode=cv2.BORDER_CONSTANT, value=0)
-        for img in img_nda:
-            data ={'image':img}
-            res = aug(**data)
-            imgs.append(res['image'])
-        img_nda = np.stack(imgs, axis=0)
-        # pad along z (before_z,after_z),(before_x,after_x),(beforey,after_y)
-        if img_nda.shape[0] < dim[0]:
-            padding = int(np.ceil((dim[0] - img_nda.shape[0])/2))
-            img_nda = np.pad(img_nda,[(padding,padding),(0,0), (0,0)], 'constant')
-    # second pad mask
-    if mask_nda.shape[2] < dim[2] or mask_nda.shape[1] < dim[1] or mask_nda.shape[0] < dim[0]:  # sometimes we have a volume which should be cropped along z but resized along x and y
-        resized_by = 'zero pad'
-        logging.debug('mask size: {}'.format(mask_nda.shape))
-
-        # pad inplane
-        masks = []
-        aug = PadIfNeeded(p=1.0,min_height=dim[1],min_width=dim[2],border_mode=cv2.BORDER_CONSTANT, value=0)
-        for mask in mask_nda:
-            data = {'image': mask}
-            res = aug(**data)
-            masks.append(res['image'])
-        mask_nda = np.stack(masks, axis=0)
-        # pad along z
-        if mask_nda.shape[0] < dim[0]:
-            padding = int(np.ceil((dim[0] - mask_nda.shape[0])/2))
-            mask_nda = np.pad(mask_nda,[(padding,padding),(0,0), (0,0)], 'constant')
-
-    # center crop in z
-    # center crop slice by slice to given size, check if bigger or smaller
-    # nda is already in inplane square resolution, need to check only x
-    if (img_nda.shape[2] > dim[2] or img_nda.shape[1] > dim[1] or img_nda.shape[0] > dim[0]):  # if first nda bigger than wished output, crop
-        resized_by = 'center crop'
-        img_nda = crop_center_3d(img_nda, dim[0], dim[1], dim[2])
-
-    if (mask_nda.shape[2] > dim[2] or mask_nda.shape[1] > dim[1] or mask_nda.shape[0] > dim[0]):  # if second nda bigger than wished output, crop
-        resized_by = 'center crop'
-        mask_nda = crop_center_3d(mask_nda, dim[0], dim[1], dim[2])
-
-    return img_nda, mask_nda, resized_by
-
-
-def center_crop_or_resize_2d(img_nda, mask_nda, dim):
-    """
-    center crop to given size, check if bigger or smaller
-    requires square shape as input
-    skimage resize takes the order parameter which defines the interpolation
-        0: Nearest-neighbor
-        1: Bi-linear (default)
-        2: Bi-quadratic
-        3: Bi-cubic
-        4: Bi-quartic
-        5: Bi-quintic
-
-    :param img_nda:
-    :param mask_nda:
-    :param dim:
-    :return:
-    """
-
-    if img_nda.shape[0] > dim[0]:  # if nda is bigger than output shape, center crop, otherwise resize
-        resized_by = 'center crop'
-        img_nda = crop_center_2d(img_nda, dim[0], dim[1])
-        mask_nda = crop_center_2d(mask_nda, dim[0], dim[1])
-    else:
-        resized_by = 'skimage resize'
-        logging.debug('image too small, need to resize slice wise')
-        # resize image
-        img_nda = resize(img_nda, dim, mode='constant', preserve_range=True, anti_aliasing=True, order=3, clip=True)
-        # resize mask
-        mask_nda = resize(mask_nda, dim, mode='constant', anti_aliasing=False, preserve_range=True, order=0, cval=0,
-                          clip=True).astype(mask_nda.dtype)
-
-    return img_nda, mask_nda, resized_by
-
-def center_crop_or_pad_2d(img_nda, mask_nda, dim):
-    """
-    pad and/or crop to given size
-
-    :param img_nda:
-    :param mask_nda:
-    :param dim:
-    :return:
-    """
-    resized_by = ''
-    # first pad
-    aug = PadIfNeeded(p=1.0, min_height=dim[0], min_width=dim[1], border_mode=cv2.BORDER_CONSTANT, value=0)
-
-    if img_nda.shape[0] < dim[0] or img_nda.shape[1] < dim[1]:
-        resized_by += 'zero pad'
-        data = {'image': img_nda}
-        res = aug(**data)
-        img_nda = res['image']
-    if mask_nda.shape[0] < dim[0] or mask_nda.shape[1] < dim[1]:
-        resized_by += 'zero pad'
-        data = {'image': mask_nda}
-        res = aug(**data)
-        mask_nda = res['image']
-
-    # than crop
-    if img_nda.shape[0] > dim[0] or img_nda.shape[1] > dim[1]:
-        resized_by += 'center crop'
-        img_nda = crop_center_2d(img_nda, dim[0], dim[1])
-    if mask_nda.shape[0] > dim[0] or mask_nda.shape[1] > dim[1]:
-        resized_by += 'center crop'
-        mask_nda = crop_center_2d(mask_nda, dim[0], dim[1])
-
-    return img_nda, mask_nda, resized_by
-
-
-def transform_to_binary_mask(mask_nda, mask_values=[0, 1, 2, 3]):
+def transform_to_binary_mask(mask_nda, mask_values=None):
     """
     Transform from a value-based representation to a binary channel based representation
     :param mask_nda:
@@ -963,6 +507,8 @@ def transform_to_binary_mask(mask_nda, mask_values=[0, 1, 2, 3]):
     """
     # transform the labels to binary channel masks
 
+    if mask_values is None:
+        mask_values = [0, 1, 2, 3]
     mask = np.zeros((*mask_nda.shape, len(mask_values)), dtype=np.bool)
     for ix, mask_value in enumerate(mask_values):
         mask[..., ix] = mask_nda == mask_value
@@ -970,7 +516,6 @@ def transform_to_binary_mask(mask_nda, mask_values=[0, 1, 2, 3]):
 
 
 def from_channel_to_flat(binary_mask, start_c=0):
-
     """
     Transform a tensor or numpy nda from a channel-wise (one channel per label) representation
     to a value-based representation
@@ -1020,37 +565,45 @@ def normalise_image(img_nda, normaliser='minmax'):
     else:
         return (img_nda - img_nda.min()) / (img_nda.max() - img_nda.min() + sys.float_info.epsilon)
 
+
 def get_metadata_maybe(key, sitk_img, default='not_found'):
     try:
         value = sitk_img.GetMetaData(key)
     except Exception as e:
-        #logging.debug('key not found: {}, {}'.format(key, e))
+        # logging.debug('key not found: {}, {}'.format(key, e))
         value = default
         pass
 
     return value
+
+
 import matplotlib.pyplot as plt
+
+
 def show_3D(sitk_img):
     img_array = sitk.GetArrayFromImage(sitk_img)
     max_depth = img_array.shape[0]
-    fig = plt.figure(figsize=(30,max_depth))
+    fig = plt.figure(figsize=(30, max_depth))
     for i in range(max_depth):
-        fig.add_subplot(1,max_depth,i+1)
-        plt.imshow(img_array[i,:,:])
+        fig.add_subplot(1, max_depth, i + 1)
+        plt.imshow(img_array[i, :, :])
         plt.axis('off')
 
-def Image3D_from_Time(sitk_img,time):
+
+def Image3D_from_Time(sitk_img, time):
     img_array = sitk.GetArrayFromImage(sitk_img)
-    sitk_array_3D = img_array[time-1,:,:,:]
+    sitk_array_3D = img_array[time - 1, :, :, :]
     new_sitk_img = sitk.GetImageFromArray(sitk_array_3D)
     return new_sitk_img
+
 
 def ensure_dir(file_path):
     directory = os.path.dirname(file_path)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-#returns img of only one label
+
+# returns only one label
 def get_single_label_img(sitk_img, label):
     img_array = sitk.GetArrayFromImage(sitk_img)
     label_array = (img_array == label).astype(int)
@@ -1059,14 +612,16 @@ def get_single_label_img(sitk_img, label):
     label_img.CopyInformation(sitk_img)
     return label_img
 
-#returns resampled img1 by referncing img2
+
+# returns resampled img1 by referncing img2
 def resample_img(sitk_img1, sitk_img2):
     resampler = sitk.ResampleImageFilter()
     resampler.SetReferenceImage(sitk_img2)
     resampled_img = resampler.Execute(sitk_img1)
     return resampled_img
 
-#returns resampled_img back to normal label
+
+# returns resampled_img back to normal label
 def convert_back_to_label(sitk_img, label):
     img_array = sitk.GetArrayFromImage(sitk_img)
     label_array = (img_array > 25).astype(int)
@@ -1075,13 +630,14 @@ def convert_back_to_label(sitk_img, label):
     label_img.CopyInformation(sitk_img)
     return label_img
 
-#returns resampled_img back to normal label with percentage
+
+# returns resampled_img back to normal label with percentage
 def advanced_convert_back_to_label(sitk_img, label, percentage):
     img_array = sitk.GetArrayFromImage(sitk_img)
     percent_array = img_array.flatten()
     percent_array = percent_array[percent_array > 0]
     try:
-        threshold = - np.percentile(percent_array*-1,q=percentage)
+        threshold = - np.percentile(percent_array * -1, q=percentage)
     except IndexError:
         print("IndexError")
         threshold = 50
@@ -1091,11 +647,12 @@ def advanced_convert_back_to_label(sitk_img, label, percentage):
     label_img.CopyInformation(sitk_img)
     return label_img
 
-#returns all labels added and with priority from label 3 to 1
-def add_labels(label_array1,label_array2,label_array3):
+
+# returns all labels added and with priority from label 3 to 1
+def add_labels(label_array1, label_array2, label_array3):
     final_array = label_array3
     temp_array = final_array + label_array2
-    #if you add the label, there is only a 2 if there was a 0 there before, so now oferwriting
+    # if you add the label, there is only a 2 if there was a 0 there before, so now oferwriting
     temp_array = (temp_array == 2).astype(int)
     temp_array = temp_array * 2
     final_array = final_array + temp_array
@@ -1210,6 +767,7 @@ def max_thres_resample2_label_img(sitk_img1, sitk_img2, threshold):
     resampled_img.CopyInformation(resampled_label1)
     return resampled_img
 
+
 def resample_direcion_origin_spacing(sitk_img, reference_sitk, interpolate=sitk.sitkLinear):
     """
     Resample a sitk img, copy direction, origin and spacing of the reference image
@@ -1232,14 +790,13 @@ def resample_direcion_origin_spacing(sitk_img, reference_sitk, interpolate=sitk.
     return resampled
 
 
-# reutrns resampled img1 by referencing img2 with percentage, modified by sven !!!
+# returns resampled img1 by referencing img2 with percentage, modified by sven !!!
 def max_thres_resample2_iso_label_img(sitk_img1, threshold, spacing_=(1.5, 1.5, 1.5), file_path='temp.nrrd',
                                       interpol=sitk.sitkLinear):
     from src.visualization.Visualize import show_2D_or_3D
-    from src.data.Postprocess import clean_3d_prediction_3d_cc
     import numpy as np
-    import cv2
     import scipy
+
     debug = False
 
     label1_img1 = get_single_label_img(sitk_img1, 1)
@@ -1364,11 +921,10 @@ def max_thres_resample2_label_img_shift(sitk_img1, sitk_img2, threshold, shift, 
     return resampled_img, file_path
 
 
-def transform_to_isotrop_voxels(sitk_img, interpolate=sitk.sitkBSpline, spacing_=(1.,1.,1.), file_path='temp.nrrd'):
-
+def transform_to_isotrop_voxels(sitk_img, interpolate=sitk.sitkBSpline, spacing_=(1., 1., 1.), file_path='temp.nrrd'):
     size = sitk_img.GetSize()
     spacing = sitk_img.GetSpacing()
-    size_new = tuple([int((s*space_old)//space_new) for s,space_old,space_new in zip(size,spacing,spacing_)])
+    size_new = tuple([int((s * space_old) // space_new) for s, space_old, space_new in zip(size, spacing, spacing_)])
 
     # resample to isotrop voxels
     resampler = sitk.ResampleImageFilter()
@@ -1378,8 +934,7 @@ def transform_to_isotrop_voxels(sitk_img, interpolate=sitk.sitkBSpline, spacing_
     resampler.SetOutputDirection(sitk_img.GetDirection())
     resampler.SetInterpolator(interpolate)
     resampled = resampler.Execute(sitk_img)
-        # copy metadata
+    # copy metadata
     for key in sitk_img.GetMetaDataKeys():
         resampled.SetMetaData(key, get_metadata_maybe(sitk_img, key))
     return resampled, file_path
-
