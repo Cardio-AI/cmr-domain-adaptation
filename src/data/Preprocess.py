@@ -456,8 +456,8 @@ def pad_and_crop(ndarray, target_shape=(10, 10, 10)):
     pad = floor(x),floor(x)+1
     crop = floor(x)+1, floor(x)
     ----------
-    ndarray : numpy.ndarray of any shape
-    target_shape : must have the same length as ndarray.ndim
+    ndarray : numpy.ndarray - of any shape
+    target_shape : tuple - must have the same length as ndarray.ndim
 
     Returns np.ndarray with each axis either pad or crop
     -------

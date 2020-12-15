@@ -19,19 +19,18 @@ Project Structure
     ├── Makefile           <- Makefile with commands like 'make environment' or 'make requirement'
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
-    │   ├── metadata       <- Excel and csv files with additional metadata
+    │   ├── metadata       <- Excel and csv files with additional metadata are stored here
     │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── predicted      <- Model predictions, will be used for the evaluations
+    │   ├── predicted      <- Model predictions, will be used for the evaluation scripts
     │   └── raw            <- The original, immutable data dump.
     │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
+    ├── models             <- Trained and serialized model definitions and weights
     │
     ├── notebooks          <- Jupyter notebooks. 
-    │   ├── Dataset        <- call the dataset helper functions, analyze the datasets
-    │   ├── Evaluate       <- Evaluate the model performance, create plots
+    │   ├── Dataset        <- Create, map, split or pre-process the dataset
+    │   ├── Evaluate       <- Evaluate the model predictions, create results dataframes and plots
     │   ├── Predict        <- Use the models and predict the segmentation
-    │   ├── Train          <- Train a new model
-    │   └── Test_Models    <- Tensorflow functional or subclassing tests
+    │   └── Train          <- Train a new model, predict on heldout splits, undo the generator steps
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
     │   ├── configs        <- Experiment config files as json
@@ -39,23 +38,22 @@ Project Structure
     │   ├── history        <- Tensorboard trainings history files
     │   └── tensorboard_logs  <- Generated graphics and figures to be used in reporting
     │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
+    ├── environment.yaml   <- Conda requirements file. Generated with `conda env export > environment.yml`
     │
     ├── setup.py           <- Makes project pip installable (pip install -e .) so src can be imported
-    ├── src                <- Helper functions that will be used by the notebooks.
-        ├── data           <- create, preprocess and extract the nrrd files
-        ├── models         <- Modelzoo, Modelutils and Tensorflow layers
-        ├── utils          <- Metrics, callbacks, io-utils, notebook imports
-        └── visualization  <- Plots for the data, generator or evaluations
+    ├── src                <- Python modules with classes and functions that will be orchestrated in the notebooks.
+        ├── data           <- Python modules - Create, preprocess and postprocess nrrd files
+        ├── models         <- Python modules - Model and Layer definition in TF 2.X
+        ├── utils          <- Python modules - Metrics, losses, evaluation code, TF-callbacks and io-utils
+        └── visualization  <- Python modules - Create plots for the evaluation
 
 Paper:
 --------
-- link to paper if accepted
+- <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">In review by TMI</a>
 
-- info for cite
+- Cite will follow as soon as the paper is accepted and published
 
-Setup native with OSX or Ubuntu
+Setup instructions (tested with OSX and Ubuntu)
 ------------
 ### Preconditions: 
 - Python 3.6 locally installed 

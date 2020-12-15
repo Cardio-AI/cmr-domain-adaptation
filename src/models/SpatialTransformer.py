@@ -34,7 +34,7 @@ sys.path.append('src/models/ext/pytools-lib')
 import src.models.ext.neuron.neuron.layers as nrn_layers
 
 
-def create_affine_cycle_transformer_model(config, metrics=None, networkname='affine_cycle_transformer', unet=None):
+def create_affine_cycle_transformer_model(config, networkname='affine_cycle_transformer', unet=None):
     """
     Create a compiled Domain adaption (AX2SAX) spatial transformer model with three loss functions.
 

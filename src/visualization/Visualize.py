@@ -196,7 +196,7 @@ def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=Non
     elif len(mask.shape) == 3 and mask.shape[2] == 3:  # handle mask with three channels
         y_ = (mask).astype(np.float32)
     elif len(mask.shape) == 3 and mask.shape[2] == 4:  # handle mask with 4 channels (backround = first channel)
-        # ignore backround channel for plotting
+        # ignore background channel for plotting
         y_ = (mask[..., 1:] > 0.5).astype(np.float32)
     else:
         logging.error('invalid dimensions for masks: {}'.format(mask.shape))
@@ -523,8 +523,7 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
         if mask_3d is not None:
             ax = show_slice_transparent(img=slice, mask=mask_3d[idx], show=True, ax=ax)
         else:
-            mixed = show_slice_transparent(img=slice, mask=[], show=False)
-            ax.imshow(mixed)
+            ax = show_slice_transparent(img=slice, mask=None, show=True, ax=ax)
 
         ax.set_xticks([])
         ax.set_yticks([])
