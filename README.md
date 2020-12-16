@@ -31,11 +31,10 @@ Title:
 Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 
 
+## In cooperation with:
+
 - Working group:
-> [AG Artificial Intelligence in Cardiovascular Medicine](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
-
-
-- Cooperation with:
+>- [AG Artificial Intelligence in Cardiovascular Medicine](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
 >- [Informatics for life](https://informatics4life.org/)
 >- [Klaus Tschira Foundation](https://www.klaus-tschira-stiftung.de/)
 
