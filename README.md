@@ -8,9 +8,10 @@ The following gif shows exemplary the learning progress of this model. Each fram
 
 - The repository dependencies are saved as conda environment (environment.yaml) file. 
 - The Deep Learning models/layers are build with TF 2.X.
-- Unfortunately we are not allowed to make the data public accessible. 
-- The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
-- An setup instruction is given here: [Install requirements](https://github.com/Cardio-AI/3d-mri-domain-adaptation#setup-instructions-tested-with-osx-and-ubuntu)
+- Unfortunately we are not allowed to make the dataset ([link](https://github.com/Cardio-AI/3d-mri-domain-adaptation#dataset)) public accessible. 
+- The corresponding paper is currently under review for the special issue call @ TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf)
+- Setup instruction for the repository are given here: [Install requirements](https://github.com/Cardio-AI/3d-mri-domain-adaptation#setup-instructions-tested-with-osx-and-ubuntu)
+- An overview of all files and there usage is given here: [Repository Structure](https://github.com/Cardio-AI/3d-mri-domain-adaptation#repository-structure)
 
 # Paper:
 This work was created for a TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
