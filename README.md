@@ -11,7 +11,7 @@ The following gif shows exemplary the learning progress of this model. Each fram
 - The Deep Learning models/layers are build with TF 2.X.
 - Unfortunately we are not allowed to make the data public accessible. 
 - The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
-- An setup instruction is given here: [Setup hints](##Setup instructions (tested with OSX and Ubuntu))
+- An setup instruction is given here: [Install requirements](https://github.com/Cardio-AI/3d-mri-domain-adaptation#setup-instructions-tested-with-osx-and-ubuntu)
 
 
 
@@ -34,6 +34,21 @@ Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR I
 Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
 Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 ```
+
+- Working group ([Link to AG-homepage](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)):
+```
+AG Artificial Intelligence in Cardiovascular Medicine (Universitaetsklinikum Heidelberg)
+```
+
+- Cooperation with ([Informatics for life](https://informatics4life.org/)):
+```
+Klaus Tschira Foundation
+```
+
+- Further cooperation partners:
+[German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
+[Universitaetsklinik Heidelberg](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
+[UT Southwestern Medical Center](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
 
 
 ## Repository overview:
@@ -93,6 +108,12 @@ Use the Notebooks to interact (train, predict or evaluate) with the python funct
         ├── utils          <- Python modules - Metrics, losses, prediction, evaluation code, TF-callbacks and io-utils
         └── visualization  <- Python modules - Plot functions for the evaluation and data description
 
+### Dataset
+For this work a multi-centric heterogeneous cine-SSFPs CMR TOF data set from the German Competence Network ([link](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)) 
+for Congenital Heart Defects was used (study identifier: NCT00266188, title: Non-invasive Imaging andExercise Tolerance Tests in Post-repair Tetralogy of Fallot -Intervention and Course in Patients Over 8 Years Old). 
+This TOF dataset constitutes one of the largest compiled data set of this pathology to date. 
+The data was acquired at 14 different sites between 2005-2008 on 1.5T and 3T machines; 
+further descriptions can be found in [link to study](https://www.ahajournals.org/doi/epub/10.1161/CIRCIMAGING.111.963637).
 
 ## Setup instructions (tested with OSX and Ubuntu)
 
