@@ -1,7 +1,7 @@
-# 3D-MRI-Domain-Adaptation - overview
-
+# 3D-MRI-Domain-Adaptation
 This project includes the code to train a deep learning model for Unsupervised Domain Adaptation of 3D CMR images.
 
+# Overview
 The trained model is able to transform an AX CMR into the patient specific SAX direction.
 The following gif shows exemplary the learning progress of this model. Each frame shows the predicted AX2SAX prediction of the model after it is trained for one additional epoch.
 ![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
