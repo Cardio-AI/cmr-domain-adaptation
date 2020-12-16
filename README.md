@@ -9,12 +9,34 @@ Unfortunately the data is not public. The corresponding paper is currently under
 The following gif shows exemplary the learning progress of this model. Each frame shows the predicted AX2SAX prediction of the model after it is trained for one additional epoch.
 ![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
 
-Overview:
+
+Paper:
+--------
+This work was created for a TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
+```
+"Call for Papers IEEE Transactions on Medical ImagingSpecial Issue on Annotation-Efficient Deep Learning for Medical Imaging"
+```
+- The paper is currently within the review process (minor revision).
+- The Bibtex info and a link to the paper will be added as soon as it got accepted and published.
+
+- Title:
+```
+Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks
+```
+
+- Authors:
+```
+Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
+Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
+```
+
+
+Repository overview:
 --------
 This repository splits the source code into 
 - interactive notebooks (/notebooks), 
 - python source modules (/src) and 
-- the experiment related files such as the experiment configs  (/reports).
+- the experiment related files such as the experiment configs (/reports) or trained models (/models).
 
 Each experiment includes the following artefacts:
 - One config file, which represents all experimental hyper-parameters which are neccessary to reproduce the experiment or to load it for later predictions
@@ -67,11 +89,6 @@ Project Structure
         ├── utils          <- Python modules - Metrics, losses, prediction, evaluation code, TF-callbacks and io-utils
         └── visualization  <- Python modules - Plot functions for the evaluation and data description
 
-Paper:
---------
-- <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">In review by TMI</a>
-
-- Cite will follow as soon as the paper is accepted and published
 
 Setup instructions (tested with OSX and Ubuntu)
 ------------
