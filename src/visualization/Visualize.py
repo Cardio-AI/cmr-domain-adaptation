@@ -550,7 +550,7 @@ def plot_dice_per_slice_line(gt, pred, save_path='reports/figures/error_per_labe
         -------
 
         '''
-    import src.utils.Metrics_own as metr
+    import src.utils.Loss_and_metrics as metr
 
     myos = [metr.dice_coef_myo(g, p).numpy() for g, p in zip(gt, pred)]
     lvs = [metr.dice_coef_lv(g, p).numpy() for g, p in zip(gt, pred)]
@@ -579,7 +579,7 @@ def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_label
     -------
 
     '''
-    import src.utils.Metrics_own as metr
+    import src.utils.Loss_and_metrics as metr
 
     myos = [metr.dice_coef_myo(g, p).numpy() for g, p in zip(gt, pred)]
     myos_gt = [int(not g.max()) for g in gt[..., 1]]

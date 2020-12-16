@@ -41,9 +41,9 @@ environment:
 ifeq (True,$(HAS_CONDA))
 		@echo ">>> Detected conda, creating conda environment."
 ifeq (3,$(findstring 3,$(PYTHON_INTERPRETER)))
-	conda create --name $(PROJECT_NAME) python=3.6
+	conda env create --file environment.yaml
 else
-	conda create --name $(PROJECT_NAME) python=2.7
+	conda env create --file environment.yaml
 endif
 		@echo ">>> New conda env created. Activate with:\nsource activate $(PROJECT_NAME)"
 else

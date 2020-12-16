@@ -9,14 +9,28 @@ The following gif shows exemplary the learning progress of this model. Each fram
 
 Overview:
 --------
-Figure of the final pipeline
-Use the Notebooks to interact with the python functions within the src directories.
+This repository splits the source code into interactive notebooks (/notebooks), python source modules (/src) and the experiment related files such as the experiment configs  (/reports).
+
+Each experiment includes the following artefacts:
+- One text logfile per experiment for all runtime specific information. 
+- Three tensorboard logfiles per training to keep track of the trainings, evaluation and visual output progress. 
+- One dataframe as abstraction layer, which orchestrated the dicom files for each experiment. 
+- One config file, which collected the experiment setup such as the experiment name, the experiment-specific paths and the preprocessing-, model- and trainings-hyperparameters. 
+- One model graph description as json file and one h5 checkpoint file with the best performing model weights.
+
+The tensorflow model and layer definitions are within /src/models. 
+The transformation layer is built on the neuron project, which is also part of the current Voxelmorph approach (https://github.com/voxelmorph/voxelmorph).
+
+Use the Notebooks to interact (train, predict or evaluate) with the python functions.
+
+
+
 
 Project Structure
 ------------
 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like 'make environment' or 'make requirement'
+    ├── Makefile           <- Makefile with commands like 'make environment'
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
     │   ├── metadata       <- Excel and csv files with additional metadata are stored here
@@ -28,24 +42,28 @@ Project Structure
     │
     ├── notebooks          <- Jupyter notebooks. 
     │   ├── Dataset        <- Create, map, split or pre-process the dataset
-    │   ├── Evaluate       <- Evaluate the model predictions, create results dataframes and plots
-    │   ├── Predict        <- Use the models and predict the segmentation
-    │   └── Train          <- Train a new model, predict on heldout splits, undo the generator steps
+    │   ├── Evaluate       <- Evaluate the model predictions, create dataframes and plots
+    │   ├── Predict        <- Load an experiment config and a pre-trained model, 
+    │         │                     transform AX CMR into the SAX domain, apply the task network, 
+    │         │                     transform the predicted mask back into the AX domain, 
+    │         │                     undo the generator steps and save the prediction to disk   
+    │   └── Train          <- Inspect the generators, define an experiment config,
+    │                              load and inject a task network, build the graph and train a new AX2SAX model
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   ├── configs        <- Experiment config files as json
+    │   ├── configs        <- Experiment config files as json with all hyperparameters and paths
     │   ├── figures        <- Generated graphics and figures to be used in reporting
     │   ├── history        <- Tensorboard trainings history files
-    │   └── tensorboard_logs  <- Generated graphics and figures to be used in reporting
+    │   └── tensorboard_logs  <- Trainings-scalars and images of the intermediate predictions
     │
     ├── environment.yaml   <- Conda requirements file. Generated with `conda env export > environment.yml`
     │
     ├── setup.py           <- Makes project pip installable (pip install -e .) so src can be imported
     ├── src                <- Python modules with classes and functions that will be orchestrated in the notebooks.
-        ├── data           <- Python modules - Create, preprocess and postprocess nrrd files
-        ├── models         <- Python modules - Model and Layer definition in TF 2.X
-        ├── utils          <- Python modules - Metrics, losses, evaluation code, TF-callbacks and io-utils
-        └── visualization  <- Python modules - Create plots for the evaluation
+        ├── data           <- Python modules - Generators, preprocess and postprocess functions
+        ├── models         <- Python modules - TF.keras 2.X Model and Layer definition
+        ├── utils          <- Python modules - Metrics, losses, prediction, evaluation code, TF-callbacks and io-utils
+        └── visualization  <- Python modules - Plot functions for the evaluation and data description
 
 Paper:
 --------
@@ -86,11 +104,16 @@ python -m ipykernel install --user --name ax2sax --display-name "ax2sax kernel"
 ```
 
 
+### Enable interactive widgets in Jupyterlab
+
+- Pre-condition: nodejs installed globally or into the conda environment. e.g.:
+```
+conda install -c conda-forge nodejs
+```
+- Full documentation on hw to enable the jupyterlab-extensions:
+<a target="_blank" href="https://ipywidgets.readthedocs.io/en/latest/user_install.html#installing-the-jupyterlab-extension">JupyterLab</a>
+```
+jupyter labextension install @jupyter-widgets/jupyterlab-manager
+```
 
 
-
-
-### The repository is split into /notebooks and python /src modules
-
-All interaction (load data, train load models, predict on held out splits) are summarized into one notebook /Notebooks/Train/3D_AX_to_SAX_Rotation_cycle.ipynb.
-The model and layer definitions are within /src/models. The transformation module is copyed and modified from the neuron project, which is also part of the current Voxelmorph approach (https://github.com/voxelmorph/voxelmorph).

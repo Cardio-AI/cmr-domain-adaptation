@@ -6,7 +6,7 @@ from src.data.Postprocess import undo_generator_steps, clean_3d_prediction_3d_cc
 from src.data.Dataset import get_reference_nrrd
 from src.models.SpatialTransformer import create_affine_transformer_fixed
 from src.visualization.Visualize import show_2D_or_3D
-import src.utils.Metrics_own as metr
+import src.utils.Loss_and_metrics as metr
 tf.get_logger().setLevel('ERROR')
 import logging
 import os

@@ -1,18 +1,18 @@
 """
-Unsupervised Domain Adaption from Axial
+Unsupervised Domain Adaption from AX to SAX domain
+Paper for the code: Unsupervised Domain Adaptation from Axial toShort-Axis Multi-Slice Cardiac MR Images byIncorporating Pretrained Task Networks
+Currently in Review at TMI
 Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
 Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 
-Spatial transformer architecture, based on the voxelmorph code
-
-tensorflow/keras utilities for the neuron project
+The spatial transformer layer is based on the neuron project:
 Unsupervised Learning for Fast Probabilistic Diffeomorphic Registration
 Adrian V. Dalca, Guha Balakrishnan, John Guttag, Mert R. Sabuncu
 MICCAI 2018.
 """
 
-import logging
 # main imports
+import logging
 import sys
 
 # third party
@@ -24,7 +24,7 @@ from tensorflow.keras.initializers import RandomNormal
 from tensorflow.keras.layers import Input
 from tensorflow.keras.models import Model
 
-import src.utils.Metrics_own as metr
+import src.utils.Loss_and_metrics as metr
 from src.models.KerasLayers import Euler2Matrix, UnetWrapper, ConvEncoder, Inverse3DMatrix
 from src.models.ModelUtils import get_optimizer
 
@@ -99,7 +99,6 @@ def create_affine_cycle_transformer_model(config, networkname='affine_cycle_tran
     else:
         # distribute the training with the "mirrored data"-paradigm across multiple gpus if available, if not use gpu 0
         strategy = tf.distribute.MirroredStrategy(devices=config.get('GPUS', ["/gpu:0"]))
-    # tf.print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
     with strategy.scope():
 
         input_shape = config.get('DIM', [10, 224, 224])
@@ -209,7 +208,7 @@ def create_affine_cycle_transformer_model(config, networkname='affine_cycle_tran
                 else:
                     probability_object = 'mask_prob'
                 logging.info('adding focus loss on {} with a weighting of {}'.format(probability_object, focus_weight))
-                losses[probability_object] = metr.max_volume_loss(min_probabillity=min_unet_probability)
+                losses[probability_object] = metr.max_volume_loss(min_probability=min_unet_probability)
                 loss_w[probability_object] = focus_weight
 
 
