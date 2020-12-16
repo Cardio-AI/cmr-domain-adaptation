@@ -1,29 +1,31 @@
 3D-MRI-Domain-Adaptation
 ==============================
 
-This repository includes the code and notebooks for an unsupervised AX--> SAX transformation model.
-The repository environment is saved as conda environment file. The DL graph is build on tensorflow.
+This repository includes the code and notebooks to train a deep learning model for Unsupervised Domain Adaptation of 3D CMR images
+The trained model is able to transform an AX CMR into the patient specific SAX direction.
+The repository environment is saved as conda environment file. The Deep Learning models/layers are build with TF 2.X.
+Unfortunately the data is not public. The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
 
 The following gif shows exemplary the learning progress of this model. Each frame shows the predicted AX2SAX prediction of the model after it is trained for one additional epoch.
 ![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
 
 Overview:
 --------
-This repository splits the source code into interactive notebooks (/notebooks), python source modules (/src) and the experiment related files such as the experiment configs  (/reports).
+This repository splits the source code into 
+- interactive notebooks (/notebooks), 
+- python source modules (/src) and 
+- the experiment related files such as the experiment configs  (/reports).
 
 Each experiment includes the following artefacts:
-- One text logfile per experiment for all runtime specific information. 
+- One config file, which represents all experimental hyper-parameters which are neccessary to reproduce the experiment or to load it for later predictions
 - Three tensorboard logfiles per training to keep track of the trainings, evaluation and visual output progress. 
-- One dataframe as abstraction layer, which orchestrated the dicom files for each experiment. 
-- One config file, which collected the experiment setup such as the experiment name, the experiment-specific paths and the preprocessing-, model- and trainings-hyperparameters. 
-- One model graph description as json file and one h5 checkpoint file with the best performing model weights.
+- One dataframe which orchestrates the nrrd files with the metadata and the experiment splitting. 
+- Model graph description either as json or tensorflow protobuf file and the corresponding model weights as h5 file.
 
 The tensorflow model and layer definitions are within /src/models. 
 The transformation layer is built on the neuron project, which is also part of the current Voxelmorph approach (https://github.com/voxelmorph/voxelmorph).
 
 Use the Notebooks to interact (train, predict or evaluate) with the python functions.
-
-
 
 
 Project Structure
