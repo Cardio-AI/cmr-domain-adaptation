@@ -39,13 +39,22 @@ def get_metadata_maybe(sitk_img, key, default='not_found'):
 def show_2D_or_3D(img=None, mask=None, save=False, file_name='reports/figure/temp.png', dpi=200, f_size=(5, 5),
                   interpol='bilinear'):
     """
-    Debug wrapper for 2D or 3D image/mask vizualisation
-    wrapper checks the ndim and calls shoow_transparent or plot 3d
-    :param img:
-    :param mask:
-    :param save:
-    :param f_size:
-    :return:
+    Wrapper for 2D/3D or 4D image/mask visualisation.
+    Single point for plotting, as this wrapper will delegate the plotting according to the input dim
+    Works with image,mask tuples but also with image,None internal it calls show_transparent, plot_3d or plot_4d
+    Parameters
+    ----------
+    img : np.ndarray - with 2 <= dim <= 4
+    mask : np.ndarray - with 2 <= dim <= 4
+    save : bool - save this figure, please provide a file_name
+    file_name : string - full-path-and-file-name-with-suffix
+    dpi : int - dpi of the saved figure, will be used by matplotlib
+    f_size : tuple of int - define the figure size
+    interpol : enumaration - interpolation method for matplotlib e.g.: 'linear', 'bilinear', None
+
+    Returns matplotlib.figure
+    -------
+
     """
 
     if isinstance(img, sitk.Image):
@@ -81,10 +90,29 @@ def show_2D_or_3D(img=None, mask=None, save=False, file_name='reports/figure/tem
 
 
 def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
-    # create a violinplot with an integrated bland altmann plot
-    # nobs = median
+    """
+    Create a violinplot with an integrated bland altmann plot
+    Nobs = median
+    Expects the following dataframe structure (created in notebooks/Evaluate/Evaluate_create_plots.ipynb):
+        Name 	Dice LV 	Volume LV 	Err LV(ml) 	Hausdorff LV 	Dice RV 	Volume RV 	Err RV(ml) 	Hausdorff RV 	Dice MYO 	Volume MYO 	Err MYO(ml) 	Hausdorff MYO
+    0 	0000-0HQQW4ZN_2007-05-23_ED_msk 	0.897436 	110.887500 	-7.106250 	5.744563 	0.868490 	149.231250 	-30.600000 	7.211103 	0.619342 	57.768750 	-2.925000 	10.000000
+    1 	0000-0HQQW4ZN_2007-05-23_ES_msk 	0.850738 	43.443750 	4.921875 	4.123106 	0.830049 	82.743750 	-3.862500 	10.816654 	0.695500 	51.993750 	2.325000 	5.830952
+    Parameters
+    ----------
+    df_dice : pd.dataframe - melted dice dataframe
+    df_haus : pd.dataframe - melted dataframe with the hausdorff
+    df_hd : pd.dataframe - melted dataframe with the difference (pred-gt) of the volumes
+    df_vol : pd.dataframe - melted dataframe with the predicted volume
+    eval : pd.dataframe - full dataframe as shown in the fn description
+
+    Returns
+    -------
+
+    """
+
     import seaborn as sns
     outliers = False
+    # make sure the color schema reflects the RGB schema of show_slice_transparent
     my_pal_1 = {"Dice LV": "dodgerblue", "Dice MYO": "g", "Dice RV": "darkorange"}
     my_pal_2 = {"Err LV(ml)": "dodgerblue", "Err MYO(ml)": "g", "Err RV(ml)": "darkorange"}
     my_pal_3 = {"Volume LV": "dodgerblue", "Volume MYO": "g", "Volume RV": "darkorange"}
@@ -98,12 +126,12 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
 
     ax1 = sns.violinplot(x='variable', y='value', data=df_dice, order=["Dice LV", "Dice MYO", "Dice RV"],
                          palette=my_pal_1, showfliers=outliers, ax=ax1)
-    medians = df_dice.groupby(['variable'])['value'].mean().round(2)
+    mean = df_dice.groupby(['variable'])['value'].mean().round(2)
     sd = df_dice.groupby(['variable'])['value'].std().round(2)
-    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(medians, sd)]
+    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(mean, sd)]
 
     for tick, label in zip(range(len(ax1.get_xticklabels())), ax1.get_xticklabels()):
-        _ = ax1.text(tick, medians[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
+        _ = ax1.text(tick, mean[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
                      weight='semibold')
     plt.setp(ax1, ylim=(0, 1))
     plt.setp(ax1, ylabel=('DICE'))
@@ -117,12 +145,12 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
     ax3 = sns.violinplot(x='variable', y='value', order=["Volume LV", "Volume MYO", "Volume RV"], palette=my_pal_3,
                          showfliers=outliers, data=df_vol, ax=ax3)
 
-    medians = df_vol.groupby(['variable'])['value'].mean().round(2)
+    mean = df_vol.groupby(['variable'])['value'].mean().round(2)
     sd = df_vol.groupby(['variable'])['value'].std().round(2)
-    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(medians, sd)]
+    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(mean, sd)]
 
     for tick, label in zip(range(len(ax3.get_xticklabels())), ax3.get_xticklabels()):
-        _ = ax3.text(tick, medians[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
+        _ = ax3.text(tick, mean[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
                      weight='semibold')
     # plt.setp(ax3, ylim=(0,500))
     plt.setp(ax3, ylabel=('Vol size in ml'))
@@ -133,12 +161,12 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
                          palette=hd_pal,
                          showfliers=outliers, data=df_haus, ax=ax4)
 
-    medians = df_haus.groupby(['variable'])['value'].mean().round(2)
+    mean = df_haus.groupby(['variable'])['value'].mean().round(2)
     sd = df_haus.groupby(['variable'])['value'].std().round(2)
-    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(medians, sd)]
+    nobs = ['{}+/-{}'.format(m, s) for m, s in zip(mean, sd)]
 
     for tick, label in zip(range(len(ax4.get_xticklabels())), ax4.get_xticklabels()):
-        _ = ax4.text(tick, medians[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
+        _ = ax4.text(tick, mean[tick], nobs[tick], horizontalalignment='center', size='x-small', color='black',
                      weight='semibold')
     plt.setp(ax4, ylim=(0, 50))
     plt.setp(ax4, ylabel=('Hausdorff distance'))
@@ -147,11 +175,27 @@ def create_eval_plot(df_dice, df_haus=None, df_hd=None, df_vol=None, eval=None):
     plt.tight_layout()
     return fig
 
-def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=None):
+def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=None, interpol='none'):
     """
     Plot image + masks in one figure
+    Parameters
+    ----------
+    img : np.ndarray - image with the shape x,y
+    mask :  np.ndarray - mask with the shape x,y,channel --> one channel per label with bool values
+    show : bool - this is necessary for the tf.keras callbacks, true returns the ax, otherwise we return the figure
+    f_size : tuple of int - specify the figure size
+    ax : matplotlib.axes object - plots into that ax, if given, creates a new one otherwise
+
+    Returns ax or figure object
+    -------
+
     """
+
+    # If mask has int values (0 - #of_labels) instead of channeled bool values, define the labels of interest
+    # not provided as fn-parameter to reduce the complexity
     mask_values = [1, 2, 3]
+    # define a threshold if we have a mask from a sigmoid/softmax output-layer which is not binary
+    mask_threshold = 0.5
 
     if isinstance(img, sitk.Image):
         img = sitk.GetArrayFromImage(img).astype(np.float32)
@@ -187,17 +231,16 @@ def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=Non
 
     # check masks shape, handle mask without channel per label
     if len(mask.shape) == 2:  # mask with int as label values
-        y_ = transform_to_binary_mask(mask, mask_values=[1, 2, 3]).astype(np.float32)
-        # print(y_.shape)
+        y_ = transform_to_binary_mask(mask, mask_values=mask_values).astype(np.float32)
     elif len(mask.shape) == 3 and mask.shape[2] == 1:  # handle mask with empty additional channel
         mask = mask[..., 0]
-        y_ = transform_to_binary_mask(mask, mask_values=[1, 2, 3]).astype(np.float32)
+        y_ = transform_to_binary_mask(mask, mask_values=mask_values).astype(np.float32)
 
     elif len(mask.shape) == 3 and mask.shape[2] == 3:  # handle mask with three channels
         y_ = (mask).astype(np.float32)
     elif len(mask.shape) == 3 and mask.shape[2] == 4:  # handle mask with 4 channels (backround = first channel)
         # ignore background channel for plotting
-        y_ = (mask[..., 1:] > 0.5).astype(np.float32)
+        y_ = (mask[..., 1:] > mask_threshold).astype(np.float32)
     else:
         logging.error('invalid dimensions for masks: {}'.format(mask.shape))
         return
@@ -214,7 +257,7 @@ def show_slice_transparent(img=None, mask=None, show=True, f_size=(5, 5), ax=Non
     # normalise image, avoid interpolation by matplotlib to have full control
     x_ = (x_ - x_.min()) / (x_.max() - x_.min() + sys.float_info.epsilon)
     ax.imshow(x_, 'gray', vmin=0, vmax=0.4)
-    ax.imshow(y_, interpolation='none', alpha=.3)
+    ax.imshow(y_, interpolation=interpol, alpha=.3)
 
     if show:
         return ax
@@ -425,7 +468,7 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
     t_size = min(int(2 * len(timesteps)), 20)
     logging.info('figure: {} x {}'.format(z_size, t_size))
 
-    # long axis volumes have only one z slice squeeze=False is neccessary to avoid sqeezing the axes
+    # long axis volumes have only one z slice squeeze=False is necessary to avoid squeezing the axes
     fig, ax = plt.subplots(len(timesteps), img_4d.shape[1], figsize=[z_size, t_size], squeeze=False)
     for t_, img_3d in enumerate(img_4d):  # traverse trough time
 
@@ -440,7 +483,7 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
             # ax[t_][z].set_aspect('equal')
             if t_ == 0:  # set title before first row
                 ax[t_][z].set_title('z-axis: {}'.format(z), color='r')
-            if z == 0:  # set ylabel before first column
+            if z == 0:  # set y-label before first column
                 ax[t_][z].set_ylabel('t-axis: {}'.format(timesteps[t_]), color='r')
 
     plt.subplots_adjust(wspace=0.0, hspace=0.0)
@@ -454,7 +497,7 @@ def plot_4d_vol(img_4d, timesteps=[0], save=False, path='temp/', mask_4d=None, f
 
 
 def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figures/temp.png',
-                fig_size=[25, 8], dpi=200, interpol='nearest'):
+                fig_size=None, dpi=200, interpol='none'):
     '''
     plots a 3D nda, if a mask is given combine mask and image slices
     Parameters
@@ -473,6 +516,8 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
 
     '''
 
+    if fig_size is None:
+        fig_size = [25, 8]
     max_number_of_slices = 12
 
     if isinstance(img_3d, sitk.Image):
@@ -521,9 +566,9 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
         ax = fig.add_subplot(1, img_3d.shape[0], idx + 1)
 
         if mask_3d is not None:
-            ax = show_slice_transparent(img=slice, mask=mask_3d[idx], show=True, ax=ax)
+            ax = show_slice_transparent(img=slice, mask=mask_3d[idx], show=True, ax=ax, interpol=interpol)
         else:
-            ax = show_slice_transparent(img=slice, mask=None, show=True, ax=ax)
+            ax = show_slice_transparent(img=slice, mask=None, show=True, ax=ax, interpol=interpol)
 
         ax.set_xticks([])
         ax.set_yticks([])
@@ -539,7 +584,8 @@ def plot_3d_vol(img_3d, mask_3d=None, timestep=0, save=False, path='reports/figu
 
 def plot_dice_per_slice_line(gt, pred, save_path='reports/figures/error_per_labelandslice.png'):
     '''
-        Calculate the dice per slice, create a stacked barchart for this plot
+        Calculate the dice per slice, create a lineplot per label
+        This is necessary to figure out if we under- or over-segmented a stack of 2D slices
         Parameters
         ----------
         gt : ground truth - 3D np.ndarray with 1,2,3 ... at the voxel-position of the label
@@ -569,6 +615,7 @@ def plot_dice_per_slice_line(gt, pred, save_path='reports/figures/error_per_labe
 def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_labelandslice.png'):
     '''
     Calculate the dice per slice, create a stacked barchart for this plot
+    This is necessary to figure out if we under- or over-segmented a stack of 2D slices
     Parameters
     ----------
     gt : ground truth - 3D np.ndarray with 1,2,3 ... at the voxel-position of the label
@@ -628,7 +675,7 @@ def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_label
 
 def transform_to_binary_mask(mask_nda, mask_values=None):
     '''
-    Transform the labels to binary channel masks
+    Transform the int labels to binary channel masks
     Parameters
     ----------
     mask_nda : 2D or 3D np.ndarray with one value per label,
@@ -719,9 +766,9 @@ def plot_value_histogram(nda, f_name='histogram.jpg', image=True, reports_path='
 
 def create_quiver_plot(flowfield_2d=None, ax=None, N=5, scale=0.3, linewidth=.5):
     """
-    Function to create an easy flowfield from the voxelmorph output
+    Function to create an flowfield for a deformable vector-field
     Needs a 2D flowfield, function can handle 2D or 3D vectors as channels
-    :param N: take only ever n vector
+    :param N: take only every n vector
     :param flowfield_2d: numpy array with shape x, y, vectors
     :param ax: matplotlib ax object which should be used for plotting,
     create a new ax object if none is given
