@@ -33,13 +33,13 @@ Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy En
 
 # Cooperation partners:
 
-- Working group:
+Working group:
 >- [AG Artificial Intelligence in Cardiovascular Medicine](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
 >- [Informatics for life](https://informatics4life.org/)
 >- [Klaus Tschira Foundation](https://www.klaus-tschira-stiftung.de/)
 
 
-- Further cooperation partners:
+Further cooperation partners:
 >- [German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
 >- [Universitaetsklinik Heidelberg](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
 >- [UT Southwestern Medical Center](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
@@ -120,25 +120,25 @@ Unfortunately we are not allowed to make this data public.
 (e.g.:  <a target="_blank" href="https://www.tensorflow.org/install/gpu">Tensorflow</a>)
 
 ### Local setup
-- Clone repository
+Clone repository
 ```
 git clone %repo-name%
 cd %repo-name%
 ```
-- Create a conda environment from environment.yaml (environment name will be ax2sax)
+Create a conda environment from environment.yaml (environment name will be ax2sax)
 ```
 conda env create --file environment.yaml
 ```
 
-- Activate environment
+Activate environment
 ```
 conda activate ax2sax
 ```
-- Install a helper to automatically change the working directory to the project root directory
+Install a helper to automatically change the working directory to the project root directory
 ```
 pip install --extra-index-url https://test.pypi.org/simple/ ProjectRoot
 ```
-- Create a jupyter kernel from the activated environment, this kernel will be visible in the jupyter lab
+Create a jupyter kernel from the activated environment, this kernel will be visible in the jupyter lab
 ```
 python -m ipykernel install --user --name ax2sax --display-name "ax2sax kernel"
 ```
@@ -146,14 +146,17 @@ python -m ipykernel install --user --name ax2sax --display-name "ax2sax kernel"
 
 ### Enable interactive widgets in Jupyterlab
 
-- Pre-condition: nodejs installed globally or into the conda environment. e.g.:
+Pre-condition: nodejs installed globally or into the conda environment. e.g.:
 ```
 conda install -c conda-forge nodejs
 ```
-- Full documentation on hw to enable the jupyterlab-extensions:
-<a target="_blank" href="https://ipywidgets.readthedocs.io/en/latest/user_install.html#installing-the-jupyterlab-extension">JupyterLab</a>
+Install the jupyterlab-manager which enables the use of interactive widgets
 ```
 jupyter labextension install @jupyter-widgets/jupyterlab-manager
 ```
+
+Further infos on how to enable the jupyterlab-extensions:
+[JupyterLab](https://ipywidgets.readthedocs.io/en/latest/user_install.html#installing-the-jupyterlab-extension)
+
 
 
