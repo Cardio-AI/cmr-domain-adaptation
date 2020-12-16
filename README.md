@@ -104,7 +104,7 @@ Use the Notebooks to interact (train, predict or evaluate) with the python funct
 
 ## Dataset
 For this work a multi-centric heterogeneous cine-SSFPs CMR TOF data set from the German Competence Network ([link](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)) 
-for Congenital Heart Defects was used (study identifier: NCT00266188, title: Non-invasive Imaging andExercise Tolerance Tests in Post-repair Tetralogy of Fallot -Intervention and Course in Patients Over 8 Years Old). 
+for Congenital Heart Defects was used (study identifier: NCT00266188, title: Non-invasive Imaging and Exercise Tolerance Tests in Post-repair Tetralogy of Fallot -Intervention and Course in Patients Over 8 Years Old). 
 This TOF dataset constitutes one of the largest compiled data set of this pathology to date. 
 The data was acquired at 14 different sites between 2005-2008 on 1.5T and 3T machines; 
 further descriptions can be found in [link to study](https://www.ahajournals.org/doi/epub/10.1161/CIRCIMAGING.111.963637).
