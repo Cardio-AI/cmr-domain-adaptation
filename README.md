@@ -46,9 +46,9 @@ Klaus Tschira Foundation
 ```
 
 - Further cooperation partners:
-[German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
-[Universitaetsklinik Heidelberg](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
-[UT Southwestern Medical Center](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
+    - [German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
+    - [Universitaetsklinik Heidelberg](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
+    - [UT Southwestern Medical Center](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
 
 
 ## Repository overview:
