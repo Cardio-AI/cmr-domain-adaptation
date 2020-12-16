@@ -1,7 +1,6 @@
-3D-MRI-Domain-Adaptation
-==============================
+# 3D-MRI-Domain-Adaptation - overview
 
-This repository includes the code and notebooks to train a deep learning model for Unsupervised Domain Adaptation of 3D CMR images.
+This project includes the code to train a deep learning model for Unsupervised Domain Adaptation of 3D CMR images.
 
 The trained model is able to transform an AX CMR into the patient specific SAX direction.
 The following gif shows exemplary the learning progress of this model. Each frame shows the predicted AX2SAX prediction of the model after it is trained for one additional epoch.
@@ -13,7 +12,7 @@ The following gif shows exemplary the learning progress of this model. Each fram
 - The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
 - An setup instruction is given here: [Install requirements](https://github.com/Cardio-AI/3d-mri-domain-adaptation#setup-instructions-tested-with-osx-and-ubuntu)
 
-## Paper:
+# Paper:
 This work was created for a TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
 - The paper is currently within the review process (minor revision).
 - The Bibtex info and a link to the paper will be added as soon as it got accepted and published.
@@ -26,12 +25,12 @@ Title:
 >Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks
 
 
-- Authors:
+Authors:
 >Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
 Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 
 
-## In cooperation with:
+# Cooperation partners:
 
 - Working group:
 >- [AG Artificial Intelligence in Cardiovascular Medicine](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
@@ -45,7 +44,7 @@ Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy En
 >- [UT Southwestern Medical Center](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
 
 
-## Repository overview:
+# How to use:
 
 This repository splits the source code into 
 - interactive notebooks (/notebooks), 
@@ -64,7 +63,7 @@ The transformation layer is built on the neuron project, which is also part of t
 Use the Notebooks to interact (train, predict or evaluate) with the python functions.
 
 
-## Project Structure
+## Repository Structure
 
     ├── LICENSE
     ├── Makefile           <- Makefile with commands like 'make environment'
@@ -102,14 +101,14 @@ Use the Notebooks to interact (train, predict or evaluate) with the python funct
         ├── utils          <- Python modules - Metrics, losses, prediction, evaluation code, TF-callbacks and io-utils
         └── visualization  <- Python modules - Plot functions for the evaluation and data description
 
-### Dataset
+## Dataset
 For this work a multi-centric heterogeneous cine-SSFPs CMR TOF data set from the German Competence Network ([link](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)) 
 for Congenital Heart Defects was used (study identifier: NCT00266188, title: Non-invasive Imaging andExercise Tolerance Tests in Post-repair Tetralogy of Fallot -Intervention and Course in Patients Over 8 Years Old). 
 This TOF dataset constitutes one of the largest compiled data set of this pathology to date. 
 The data was acquired at 14 different sites between 2005-2008 on 1.5T and 3T machines; 
 further descriptions can be found in [link to study](https://www.ahajournals.org/doi/epub/10.1161/CIRCIMAGING.111.963637).
 
-## Setup instructions (tested with OSX and Ubuntu)
+## Setup instructions (Ubuntu)
 
 ### Preconditions: 
 - Python 3.6 locally installed 
