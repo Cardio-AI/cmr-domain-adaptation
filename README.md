@@ -1,13 +1,17 @@
 3D-MRI-Domain-Adaptation
 ==============================
 
-This repository includes the code and notebooks to train a deep learning model for Unsupervised Domain Adaptation of 3D CMR images
-The trained model is able to transform an AX CMR into the patient specific SAX direction.
-The repository environment is saved as conda environment file. The Deep Learning models/layers are build with TF 2.X.
-Unfortunately the data is not public. The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
+This repository includes the code and notebooks to train a deep learning model for Unsupervised Domain Adaptation of 3D CMR images.
 
+The trained model is able to transform an AX CMR into the patient specific SAX direction.
 The following gif shows exemplary the learning progress of this model. Each frame shows the predicted AX2SAX prediction of the model after it is trained for one additional epoch.
 ![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
+
+- The repository dependencies are saved as conda environment (environment.yaml) file. 
+- The Deep Learning models/layers are build with TF 2.X.
+- Unfortunately we are not allowed to make the data public accessible. 
+- The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
+- An setup instruction is given here: [Setup hints] (### Preconditions:)
 
 
 Paper:
