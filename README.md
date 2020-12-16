@@ -11,11 +11,12 @@ The following gif shows exemplary the learning progress of this model. Each fram
 - The Deep Learning models/layers are build with TF 2.X.
 - Unfortunately we are not allowed to make the data public accessible. 
 - The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
-- An setup instruction is given here: [Setup hints] (###Preconditions)
+- An setup instruction is given here: [Setup hints](##Setup instructions (tested with OSX and Ubuntu))
 
 
-Paper:
---------
+
+
+## Paper:
 This work was created for a TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
 ```
 "Call for Papers IEEE Transactions on Medical ImagingSpecial Issue on Annotation-Efficient Deep Learning for Medical Imaging"
@@ -35,8 +36,8 @@ Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy En
 ```
 
 
-Repository overview:
---------
+## Repository overview:
+
 This repository splits the source code into 
 - interactive notebooks (/notebooks), 
 - python source modules (/src) and 
@@ -54,8 +55,7 @@ The transformation layer is built on the neuron project, which is also part of t
 Use the Notebooks to interact (train, predict or evaluate) with the python functions.
 
 
-Project Structure
-------------
+## Project Structure
 
     ├── LICENSE
     ├── Makefile           <- Makefile with commands like 'make environment'
@@ -72,9 +72,9 @@ Project Structure
     │   ├── Dataset        <- Create, map, split or pre-process the dataset
     │   ├── Evaluate       <- Evaluate the model predictions, create dataframes and plots
     │   ├── Predict        <- Load an experiment config and a pre-trained model, 
-    │         │                     transform AX CMR into the SAX domain, apply the task network, 
-    │         │                     transform the predicted mask back into the AX domain, 
-    │         │                     undo the generator steps and save the prediction to disk   
+    │   │                     transform AX CMR into the SAX domain, apply the task network, 
+    │   │                     transform the predicted mask back into the AX domain, 
+    │   │                     undo the generator steps and save the prediction to disk   
     │   └── Train          <- Inspect the generators, define an experiment config,
     │                              load and inject a task network, build the graph and train a new AX2SAX model
     │
@@ -94,8 +94,8 @@ Project Structure
         └── visualization  <- Python modules - Plot functions for the evaluation and data description
 
 
-Setup instructions (tested with OSX and Ubuntu)
-------------
+##Setup instructions (tested with OSX and Ubuntu)
+
 ###Preconditions: 
 - Python 3.6 locally installed 
 (e.g.:  <a target="_blank" href="https://www.anaconda.com/download/#macos">Anaconda</a>)
