@@ -11,7 +11,7 @@ The following gif shows exemplary the learning progress of this model. Each fram
 - The Deep Learning models/layers are build with TF 2.X.
 - Unfortunately we are not allowed to make the data public accessible. 
 - The corresponding paper is currently under review for the special issue call @ TMI (cf. <a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">TMI Special Issue Call</a>)
-- An setup instruction is given here: [Setup hints] (### Preconditions:)
+- An setup instruction is given here: [Setup hints] (###Preconditions)
 
 
 Paper:
@@ -96,13 +96,13 @@ Project Structure
 
 Setup instructions (tested with OSX and Ubuntu)
 ------------
-### Preconditions: 
+###Preconditions: 
 - Python 3.6 locally installed 
 (e.g.:  <a target="_blank" href="https://www.anaconda.com/download/#macos">Anaconda</a>)
 - Installed nvidia drivers, cuda and cudnn 
 (e.g.:  <a target="_blank" href="https://www.tensorflow.org/install/gpu">Tensorflow</a>)
 
-### Local setup
+###Local setup
 - Clone repository
 ```
 git clone %repo-name%
