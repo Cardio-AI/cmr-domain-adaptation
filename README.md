@@ -46,7 +46,7 @@ Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy En
 
 # How to use:
 
-This repository splits the source code into 
+This repository splits the source code into: 
 - interactive notebooks (/notebooks), 
 - python source modules (/src) and 
 - the experiment related files such as the experiment configs (/reports) or trained models (/models).
@@ -107,6 +107,8 @@ for Congenital Heart Defects was used (study identifier: NCT00266188, title: Non
 This TOF dataset constitutes one of the largest compiled data set of this pathology to date. 
 The data was acquired at 14 different sites between 2005-2008 on 1.5T and 3T machines; 
 further descriptions can be found in [link to study](https://www.ahajournals.org/doi/epub/10.1161/CIRCIMAGING.111.963637).
+
+Unfortunately we are not allowed to make this data public.
 
 ## Setup instructions (Ubuntu)
 
