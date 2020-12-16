@@ -94,15 +94,15 @@ Use the Notebooks to interact (train, predict or evaluate) with the python funct
         └── visualization  <- Python modules - Plot functions for the evaluation and data description
 
 
-##Setup instructions (tested with OSX and Ubuntu)
+## Setup instructions (tested with OSX and Ubuntu)
 
-###Preconditions: 
+### Preconditions: 
 - Python 3.6 locally installed 
 (e.g.:  <a target="_blank" href="https://www.anaconda.com/download/#macos">Anaconda</a>)
 - Installed nvidia drivers, cuda and cudnn 
 (e.g.:  <a target="_blank" href="https://www.tensorflow.org/install/gpu">Tensorflow</a>)
 
-###Local setup
+### Local setup
 - Clone repository
 ```
 git clone %repo-name%
