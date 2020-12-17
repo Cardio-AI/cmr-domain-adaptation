@@ -445,6 +445,7 @@ class CycleMotionDataGenerator(DataGenerator):
         # load sax2ax
         sitk_sax2ax = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D', 'SAX_to_AX_3D'),
                                       masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
+        # test to train on ax,sax image pairs without ax2sax transformation
 
         self.__plot_state_if_debug__(sitk_ax, sitk_ax2sax, t0, 'raw')
         t1 = time()
@@ -549,7 +550,14 @@ class CycleMotionDataGenerator(DataGenerator):
         self.__plot_state_if_debug__(nda_ax, nda_ax2sax, t1, 'clipped and normalized')
 
         return nda_ax[..., np.newaxis], \
+               nda_sax[..., np.newaxis], \
+               nda_sax[..., np.newaxis], \
+               nda_ax[..., np.newaxis], \
+               i, ID, time() - t0
+
+"""
+        return nda_ax[..., np.newaxis], \
                nda_ax2sax[..., np.newaxis], \
                nda_sax[..., np.newaxis], \
                nda_sax2ax[..., np.newaxis], \
-               i, ID, time() - t0
+               i, ID, time() - t0"""

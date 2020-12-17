@@ -14,17 +14,14 @@ The following gif shows exemplary the learning progress of this model. Each fram
 - An overview of all files and there usage is given here: [Repository Structure](https://github.com/Cardio-AI/3d-mri-domain-adaptation#repository-structure)
 
 # Paper:
-This work was created for a TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
 - The paper is currently within the review process (minor revision).
 - The Bibtex info and a link to the paper will be added as soon as it got accepted and published.
 
-
+This work was created for a IEEE TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
 >"Call for Papers IEEE Transactions on Medical ImagingSpecial Issue on Annotation-Efficient Deep Learning for Medical Imaging"
-
 
 Title:
 >Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks
-
 
 Authors:
 >Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
