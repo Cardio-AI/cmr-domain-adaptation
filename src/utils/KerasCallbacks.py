@@ -661,26 +661,19 @@ class Ax2SaxWriter(Callback):
                                                                save=False, dpi=self.dpi, f_size=self.f_size,
                                                                interpol=self.interpol)),
                                              step=epoch)
-                    tensorflow.summary.image(name='plot/{}/_AX'.format(pred_i),
-                                             data=self.make_image(
-                                                 show_2D_or_3D(x_[::self.slice_by], save=False, dpi=self.dpi,
-                                                               f_size=self.f_size, interpol=self.interpol)),
-                                             step=epoch)
-                    tensorflow.summary.image(name='plot/{}/_AX2SAX_gt'.format(pred_i),
-                                             data=self.make_image(
-                                                 show_2D_or_3D(y_[::self.slice_by], save=False, dpi=self.dpi,
-                                                               f_size=self.f_size, interpol=self.interpol)),
-                                             step=epoch)
+                    if self.e == 1: # we need to write the input and gt image only once, as it will not change
+                        tensorflow.summary.image(name='plot/{}/_AX'.format(pred_i),
+                                                 data=self.make_image(
+                                                     show_2D_or_3D(x_[::self.slice_by], save=False, dpi=self.dpi,
+                                                                   f_size=self.f_size, interpol=self.interpol)),
+                                                 step=epoch)
+                        tensorflow.summary.image(name='plot/{}/_AX2SAX_gt'.format(pred_i),
+                                                 data=self.make_image(
+                                                     show_2D_or_3D(y_[::self.slice_by], save=False, dpi=self.dpi,
+                                                                   f_size=self.f_size, interpol=self.interpol)),
+                                                 step=epoch)
 
-                    """tensorflow.summary.image(name='plot/{}/{}/_ground_truth'.format(key, i),
-                                                         data=self.make_image(
-                                                             show_slice(img=x[i], mask=y[i], show=False)),
-                                                         step=0)"""
                     pred_i += 1
-
-            # del xs, ys, pred
-
-            # self.writer.add_summary(tf.Summary(value=summary_str), global_step=self.e)
 
 
 class WeightsSaver(Callback):

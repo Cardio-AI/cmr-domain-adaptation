@@ -126,6 +126,7 @@ def predict_on_one_3d_file(full_file_name,
     ax2sax_full = normalise_image(ax2sax_full)
     msk = unet_model.predict(x=[ax2sax_full])
     msk_binary = msk >= mask_threshold
+    msk_binary = msk_binary.astype(np.float32)
 
     if debug: logging.info('Predicted mask')
     if debug: show_2D_or_3D(ax2sax_full[0][::slice_n * 3], msk_binary[0][::slice_n * 3], save=save_plots,
@@ -143,7 +144,7 @@ def predict_on_one_3d_file(full_file_name,
 
     for c in range(msk.shape[-1]):
         inv_m, _ = m_transformer.predict(
-            x=[msk[..., c], np.expand_dims(m_matrix_inverse_flatten, axis=0)])
+            x=[msk_binary[..., c], np.expand_dims(m_matrix_inverse_flatten, axis=0)])
         inv_msk.append(inv_m[..., 0] >= mask_threshold)
     inv_msk = np.stack(inv_msk, axis=-1)
 
