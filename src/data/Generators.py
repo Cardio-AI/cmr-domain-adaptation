@@ -320,6 +320,11 @@ class DataGenerator(BaseGenerator):
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
         t1 = time()
 
+        img_nda = clip_quantile(img_nda, .999)
+        if not self.MASKS:
+            # yields two images
+            mask_nda = clip_quantile(mask_nda, .999)
+
         img_nda = normalise_image(img_nda, normaliser=self.SCALER)
         if not self.MASKS:  # yields the image two times for an autoencoder
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
@@ -344,15 +349,13 @@ class DataGenerator(BaseGenerator):
         img_nda, mask_nda = map(lambda x: pad_and_crop(x, target_shape=self.DIM),
                                 [img_nda, mask_nda])
 
-        img_nda = clip_quantile(img_nda, .9999)
-        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
 
+        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
         # transform the labels to binary channel masks
         # if masks are given, otherwise keep image as it is (for vae models, masks == False)
         if self.MASKS:
             mask_nda = transform_to_binary_mask(mask_nda, self.MASK_VALUES)
         else:  # yields two images
-            mask_nda = clip_quantile(mask_nda, .999)
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
             mask_nda = mask_nda[..., np.newaxis]
 
@@ -532,6 +535,9 @@ class CycleMotionDataGenerator(DataGenerator):
             # TODO: implement augmentation, remember params and apply to the other images
             raise NotImplementedError
 
+        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: clip_quantile(x, .999),
+                                                      [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
+
         nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: normalise_image(x, normaliser=self.SCALER),
                                                       [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
@@ -541,9 +547,6 @@ class CycleMotionDataGenerator(DataGenerator):
         self.__plot_state_if_debug__(nda_ax, nda_ax2sax, t1, 'crop and pad')
 
         # clipping and normalise after cropping
-        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: clip_quantile(x, .999),
-                                                      [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
-
         nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: normalise_image(x, normaliser=self.SCALER),
                                                       [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
@@ -555,8 +558,7 @@ class CycleMotionDataGenerator(DataGenerator):
                nda_ax[..., np.newaxis], \
                i, ID, time() - t0
 
-"""
-        return nda_ax[..., np.newaxis], \
+"""        return nda_ax[..., np.newaxis], \
                nda_ax2sax[..., np.newaxis], \
                nda_sax[..., np.newaxis], \
                nda_sax2ax[..., np.newaxis], \
