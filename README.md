@@ -1,9 +1,11 @@
 # 3D CMR-Domain-Adaptation
-This repo contains the code to train a deep learning model for Unsupervised Domain Adaptation of 3D cardiac magnetic resonance (CMR) cine images to transform from axial to short-axis orientation. The task associated to the domain adaptation is to perform a segmentation task via a pre-trained network, and the results are leveraged to guide the transformation process (rigid transform via spatial transformer networks).
+
+This repo contains code to train a deep learning model for Unsupervised Domain Adaptation of 3D cardiac magnetic resonance (CMR) cine images to transform from axial to short-axis orientation. The task associated to the domain adaptation is to perform a segmentation task via a pre-trained network, and the results are leveraged to guide the transformation process (rigid transform via spatial transformer networks).
 
 The trained model is able to transform an axial (AX) CMR into the patient specific short-axis (SAX) direction.
 The following gif shows exemplary the learning progress of this model. Slices along z-direction are shown horizontally. 
 Each temporal frame shows the AX2SAX prediction of the model after it is trained for one additional epoch. At the end of the learning process, the model is able to transform the data set such that it corresponds to a short-axis view, which can be segmented more reliably by the pre-trained short-axis segmentation module. 
+
 ![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
 
 
@@ -16,12 +18,6 @@ Each temporal frame shows the AX2SAX prediction of the model after it is trained
 
 # Paper:
 
-- The corresponding paper is currently under review for a special issue @ IEEE TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf)
-- The bibtex info and a link to the paper will be added as soon as it got accepted and published.
-
-This work was created for a IEEE TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
->"Call for Papers IEEE Transactions on Medical ImagingSpecial Issue on Annotation-Efficient Deep Learning for Medical Imaging"
-
 Title:
 >Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks
 
@@ -29,12 +25,16 @@ Authors:
 >Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
 Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 
+- The corresponding paper is currently under review for a special issue called "Annotation-Efficient Deep Learning for Medical Imaging" @ IEEE TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf)) -- currently under minor revision
+- The bibtex info and a link to the paper will be added as soon as it got accepted and published.
+
 
 # Author Links:
 
 >- [Heidelberg University Hospital, WG Artificial Intelligence in Cardiovascular Medicine (AICM)](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
 >- [German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
 >- [UT Southwestern Medical Center, Pediatric Cardiology](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
+>- [Departement of Computer Science, University Of Applied Science Mannheim](https://www.informatik.hs-mannheim.de/wir/menschen/professoren/prof-dr-ivo-wolf.html)
 
 
 # How to use:
