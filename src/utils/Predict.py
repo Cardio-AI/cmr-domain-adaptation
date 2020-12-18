@@ -61,7 +61,7 @@ def predict_on_one_3d_file(full_file_name,
     model : tf.keras.model - pre-trained AX-SAX model
     unet_model : tf.keras.model - 3D wrapper for any task specific model, such as a segmentation model
 
-    Returns plots final predictions and save them to disk if chosen
+    Returns ax_cmr, ax_pred_msk, ax_gt_msk
     -------
 
     """
@@ -228,9 +228,6 @@ def predict_on_one_3d_file(full_file_name,
     logging.info('DICE LV: {}'.format(metr.dice_coef_lv(nda_gt, nda_pred).numpy()))
     logging.info('DICE RV: {}'.format(metr.dice_coef_rv(nda_gt, nda_pred).numpy()))
     logging.info('DICE MYO: {}'.format(metr.dice_coef_myo(nda_gt, nda_pred).numpy()))
-    globals()['gt'] = ax_msk_full_gt.astype(np.float32)
-    globals()['pred'] = transform_to_binary_mask(inv_msk).astype(np.float32)
-    globals()['ax2sax'] = ax2sax_full.astype(np.float32)
     try:
         logging.info('m: {}'.format(np.reshape(m_temp[0], (3, 4))))
         logging.info('m_mod: {}'.format(np.reshape(m_mod_temp[0], (3, 4))))
@@ -238,3 +235,4 @@ def predict_on_one_3d_file(full_file_name,
     except Exception as e:
         logging.error(str(e))
         pass
+    return nda_ax, nda_pred, nda_gt

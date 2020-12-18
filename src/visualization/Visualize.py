@@ -616,6 +616,8 @@ def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_label
     '''
     Calculate the dice per slice, create a stacked barchart for this plot
     This is necessary to figure out if we under- or over-segmented a stack of 2D slices
+    we expect the input masks to have the following shape: [z,x,y,labels],
+    Inverse indexing of the labels allow to work with [...,background, rv, myo, lv] or [..., rv, myo, lv]
     Parameters
     ----------
     gt : ground truth - 3D np.ndarray with 1,2,3 ... at the voxel-position of the label
@@ -628,18 +630,23 @@ def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_label
     '''
     import src.utils.Loss_and_metrics as metr
 
+    # calculate the dice per label and per slice
     myos = [metr.dice_coef_myo(g, p).numpy() for g, p in zip(gt, pred)]
-    myos_gt = [int(not g.max()) for g in gt[..., 1]]
-    lvs = [metr.dice_coef_lv(g, p).numpy() for g, p in zip(gt, pred)]
-    lvs_gt = [int(not g.max()) for g in gt[..., 2]]
-    rvs = [metr.dice_coef_rv(g, p).numpy() for g, p in zip(gt, pred)]
-    rvs_gt = [int(not g.max()) for g in gt[..., 0]]
+    # for each slice
+    # if we have at least one voxel in this slice write 0 into the *_gt
+    myos_gt = [int(not g.max()) for g in gt[..., -2]]
 
+    lvs = [metr.dice_coef_lv(g, p).numpy() for g, p in zip(gt, pred)]
+    lvs_gt = [int(not g.max()) for g in gt[..., -1]]
+    rvs = [metr.dice_coef_rv(g, p).numpy() for g, p in zip(gt, pred)]
+    rvs_gt = [int(not g.max()) for g in gt[..., -3]]
+
+    # zip the scores together --> a list of tuples: [(lv,lv_gt,myo,myo_gt,rv,rv_gt)...(...)]
     scores = list(zip(lvs, lvs_gt, myos, myos_gt, rvs, rvs_gt))
 
     import matplotlib
     plt.rcParams.update({'font.size': 25})
-    bottom = 0
+
     cmap = matplotlib.cm.get_cmap('RdYlBu')
 
     def custom_map(value):
@@ -660,7 +667,12 @@ def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_label
         return colors
 
     fig, ax = plt.subplots(figsize=(10, 10))
-    elements = range(len(scores))
+
+    bottom = 0
+    # draw 6 bars (lv,lv_gt,myo,myo_gt,rv,rv_gt) for each slice position
+    # each bar has the hight 1 but a different color (according to the custom color mapping)
+    # increase the buttom edge of the bar by one for the next bar
+    # by this we get a stacked bar plot
     for v in scores:
         rects = ax.bar([0, 1, 2, 3, 4, 5], 1, bottom=bottom, color=custom_map(v))
         bottom += 1
@@ -670,7 +682,7 @@ def plot_dice_per_slice_bar(gt, pred, save_path='reports/figures/error_per_label
     if save_path:
         plt.savefig(save_path, bbox_inches='tight')
     else:
-        plt.show()
+        return fig
 
 
 def transform_to_binary_mask(mask_nda, mask_values=None):
