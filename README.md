@@ -1,21 +1,27 @@
-# 3D-MRI-Domain-Adaptation
-This project includes the code to train a deep learning model for Unsupervised Domain Adaptation of 3D CMR images.
+# 3D CMR-Domain-Adaptation
+This repo contains the code to train a deep learning model for Unsupervised Domain Adaptation of 3D cardiac magnetic resonance (CMR) cine images to transform from axial to short-axis orientation. The task associated to the domain adaptation is to perform a segmentation task via a pre-trained network, and the results are leveraged to guide the transformation process (rigid transform via spatial transformer networks).
+
+The trained model is able to transform an axial (AX) CMR into the patient specific short-axis (SAX) direction.
+The following gif shows exemplary the learning progress of this model. Slices along z-direction are shown horizontally. 
+Each temporal frame shows the AX2SAX prediction of the model after it is trained for one additional epoch. At the end of the learning process, the model is able to transform the data set such that it corresponds to a short-axis view, which can be segmented more reliably by the pre-trained short-axis segmentation module. 
+![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
+
 
 # Overview
-The trained model is able to transform an AX CMR into the patient specific SAX direction.
-The following gif shows exemplary the learning progress of this model. Each frame shows the predicted AX2SAX prediction of the model after it is trained for one additional epoch.
-![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
 
 - The repository dependencies are saved as conda environment (environment.yaml) file. 
 - The Deep Learning models/layers are build with TF 2.X.
-- Unfortunately we are not allowed to make the dataset ([link](https://github.com/Cardio-AI/3d-mri-domain-adaptation#dataset)) public accessible. 
-- The corresponding paper is currently under review for the special issue call @ TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf)
 - Setup instruction for the repository are given here: [Install requirements](https://github.com/Cardio-AI/3d-mri-domain-adaptation#setup-instructions-tested-with-osx-and-ubuntu)
 - An overview of all files and there usage is given here: [Repository Structure](https://github.com/Cardio-AI/3d-mri-domain-adaptation#repository-structure)
 
+# Data
+
+- The used data set from the [Competence Network for Congenital Heart Defects](https://www.kompetenznetz-ahf.de/) cannot be made openly available here. Study identifier: NCT00266188 
+
 # Paper:
-- The paper is currently within the review process (minor revision).
-- The Bibtex info and a link to the paper will be added as soon as it got accepted and published.
+
+- The corresponding paper is currently under review for a special issue @ IEEE TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf)
+- The bibtex info and a link to the paper will be added as soon as it got accepted and published.
 
 This work was created for a IEEE TMI special Issue Call (<a target="_blank" href="https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf">Special Issue Call</a>): 
 >"Call for Papers IEEE Transactions on Medical ImagingSpecial Issue on Annotation-Efficient Deep Learning for Medical Imaging"
