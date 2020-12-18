@@ -14,10 +14,6 @@ Each temporal frame shows the AX2SAX prediction of the model after it is trained
 - Setup instruction for the repository are given here: [Install requirements](https://github.com/Cardio-AI/3d-mri-domain-adaptation#setup-instructions-tested-with-osx-and-ubuntu)
 - An overview of all files and there usage is given here: [Repository Structure](https://github.com/Cardio-AI/3d-mri-domain-adaptation#repository-structure)
 
-# Data
-
-- The used data set from the [Competence Network for Congenital Heart Defects](https://www.kompetenznetz-ahf.de/) cannot be made openly available here. Study identifier: NCT00266188 
-
 # Paper:
 
 - The corresponding paper is currently under review for a special issue @ IEEE TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf)
@@ -34,18 +30,11 @@ Authors:
 Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 
 
-# Cooperation partners:
+# Author Links:
 
-Working group:
->- [AG Artificial Intelligence in Cardiovascular Medicine](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
->- [Informatics for life](https://informatics4life.org/)
->- [Klaus Tschira Foundation](https://www.klaus-tschira-stiftung.de/)
-
-
-Further cooperation partners:
+>- [Heidelberg University Hospital, WG Artificial Intelligence in Cardiovascular Medicine (AICM)](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
 >- [German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
->- [Universitaetsklinik Heidelberg](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
->- [UT Southwestern Medical Center](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
+>- [UT Southwestern Medical Center, Pediatric Cardiology](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
 
 
 # How to use:
@@ -106,13 +95,12 @@ Use the Notebooks to interact (train, predict or evaluate) with the python funct
         └── visualization  <- Python modules - Plot functions for the evaluation and data description
 
 ## Dataset
-For this work a multi-centric heterogeneous cine-SSFPs CMR TOF data set from the German Competence Network ([link](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)) 
-for Congenital Heart Defects was used (study identifier: NCT00266188, title: Non-invasive Imaging and Exercise Tolerance Tests in Post-repair Tetralogy of Fallot -Intervention and Course in Patients Over 8 Years Old). 
+For this work a multi-centric heterogeneous cine-SSFPs CMR TOF data set from the [German Competence Network for Congenital Heart Defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)) was used (study identifier: NCT00266188, title: Non-invasive Imaging and Exercise Tolerance Tests in Post-repair Tetralogy of Fallot -Intervention and Course in Patients Over 8 Years Old). 
 This TOF dataset constitutes one of the largest compiled data set of this pathology to date. 
-The data was acquired at 14 different sites between 2005-2008 on 1.5T and 3T machines; 
-further descriptions can be found in [link to study](https://www.ahajournals.org/doi/epub/10.1161/CIRCIMAGING.111.963637).
+The data was acquired at 14 different German sites between 2005-2008 on 1.5T and 3T machines; 
+further descriptions can be found in [related papers](https://www.ahajournals.org/doi/epub/10.1161/CIRCIMAGING.111.963637) [1].
 
-Unfortunately we are not allowed to make this data public.
+[1] Sarikouch S, Koerperich H, Dubowy KO, Boethig D, Boettler P, Mir TS, Peters B, Kuehne T, Beerbaum P; German Competence Network for Congenital Heart Defects Investigators. Impact of gender and age on cardiovascular function late after repair of tetralogy of Fallot: percentiles based on cardiac magnetic resonance. Circ Cardiovasc Imaging. 2011 Nov;4(6):703-11. doi: 10.1161/CIRCIMAGING.111.963637. Epub 2011 Sep 9. PMID: 21908707.
 
 ## Setup instructions (Ubuntu)
 
