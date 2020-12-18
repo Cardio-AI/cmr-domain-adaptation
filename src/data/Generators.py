@@ -33,8 +33,9 @@ class BaseGenerator(tensorflow.keras.utils.Sequence):
         logging.info('Create DataGenerator')
 
         # create dicts for index based access to the file names in the datagenerators
-        X_dict = {}
-        Y_dict = {}
+        self.images = {}
+        self.labels = {}
+
 
         if y is not None:  # return x, y
             assert (len(x) == len(y)), 'len(X) != len(Y)'
@@ -47,18 +48,16 @@ class BaseGenerator(tensorflow.keras.utils.Sequence):
         ids = []
         for i in range(len(x)):
             ids.append(i)
-            X_dict[i] = x[i]
-            Y_dict[i] = y[i]
+            self.images[i] = x[i]
+            self.labels[i] = y[i]
 
         # override if necessary
         self.SINGLE_OUTPUT = config.get('SINGLE_OUTPUT', False)
-
-        self.labels = Y_dict
-        self.images = X_dict
         self.LIST_IDS = ids
 
         # if streamhandler loglevel is set to debug, print each pre-processing step
         self.DEBUG_MODE = logging.getLogger().handlers[1].level == logging.DEBUG
+        logging.info('generator in debug mode = {}'.format(self.DEBUG_MODE))
         # self.DEBUG_MODE = False
 
         # read the config, set default values if param not given
@@ -370,12 +369,32 @@ class CycleMotionDataGenerator(DataGenerator):
     e.g.: AX --> AXtoSAX --> AXtoSAXtoAX
     """
 
-    def __init__(self, x=None, y=None, config={}):
-        super(CycleMotionDataGenerator, self).__init__(x=x, y=y, config=config)
+    def __init__(self, x=None, y=None, x2=None, y2=None, config=None):
 
-        # change this to support different folder names, this is hardcoded to not break with the BaseGenerator api
-        assert 'AX_3D' in x[0]
-        assert 'AX_to_SAX_3D' in y[0]
+        # create a second set of dicts for the second set of files,
+        # This enables index based access to the file names in __data_generation__()
+        self.x2 = {}
+        self.y2 = {}
+
+        if y2 is not None:  # x,y,x2 and y2 needs to have the same number of files
+            assert (len(x2) == len(y2)), 'len(X) != len(Y)'
+            assert (len(x2) == len(x)), 'len(x2) != len(x)'
+
+        # linux/windows file path cleaning
+        if platform.system() == 'Linux':
+            x2 = [os.path.normpath(x) for x in x2 if type(x) is str]
+            y2 = [os.path.normpath(y) for y in y2 if type(y) is str]
+
+        # transform the list into a dict
+        ids = []
+        for i in range(len(x2)):
+            ids.append(i)
+            self.x2[i] = x2[i]
+            self.y2[i] = y2[i]
+
+        if config is None:
+            config = {}
+        super(CycleMotionDataGenerator, self).__init__(x=x, y=y, config=config)
 
         self.X_SHAPE = np.empty((self.BATCHSIZE, *self.DIM, self.IMG_CHANNELS), dtype=np.float32)
         self.MASKS = False
@@ -421,8 +440,13 @@ class CycleMotionDataGenerator(DataGenerator):
                 x[i,], y[i,], x2[i,], y2[i,] = x_, y_, x2_, y2_
                 logging.debug('img finished after {:0.3f} sec.'.format(needed_time))
             except Exception as e:
+                print(e)
                 logging.error(
-                    'Exception {} in datagenerator with: image: {} or mask: {}'.format(str(e), self.images[ID],
+                    'Exception {} in datagenerator with:\n'
+                    'image:\n'
+                    '{}\n'
+                    'mask:\n'
+                    '{}'.format(str(e), self.images[ID],
                                                                                        self.labels[ID]))
 
         logging.debug('Batchsize: {} preprocessing took: {:0.3f} sec'.format(self.BATCHSIZE, time() - t0))
@@ -443,10 +467,10 @@ class CycleMotionDataGenerator(DataGenerator):
         sitk_ax2sax = load_masked_img(sitk_img_f=self.labels[ID], mask=self.MASKING_IMAGE,
                                       masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
         # load sax
-        sitk_sax = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D', 'SAX_3D'),
-                                   masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
+        sitk_sax = load_masked_img(sitk_img_f=self.x2[ID], mask=self.MASKING_IMAGE,
+                                      masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
         # load sax2ax
-        sitk_sax2ax = load_masked_img(sitk_img_f=self.images[ID].replace('AX_3D', 'SAX_to_AX_3D'),
+        sitk_sax2ax = load_masked_img(sitk_img_f=self.y2[ID], mask=self.MASKING_IMAGE,
                                       masking_values=self.MASKING_VALUES, replace=self.REPLACE_WILDCARD)
         # test to train on ax,sax image pairs without ax2sax transformation
 
@@ -553,13 +577,7 @@ class CycleMotionDataGenerator(DataGenerator):
         self.__plot_state_if_debug__(nda_ax, nda_ax2sax, t1, 'clipped and normalized')
 
         return nda_ax[..., np.newaxis], \
-               nda_sax[..., np.newaxis], \
-               nda_sax[..., np.newaxis], \
-               nda_ax[..., np.newaxis], \
-               i, ID, time() - t0
-
-"""        return nda_ax[..., np.newaxis], \
                nda_ax2sax[..., np.newaxis], \
                nda_sax[..., np.newaxis], \
                nda_sax2ax[..., np.newaxis], \
-               i, ID, time() - t0"""
+               i, ID, time() - t0
