@@ -123,6 +123,7 @@ def predict_on_one_3d_file(full_file_name,
     m_matrix_inverse = np.linalg.inv(m_matrix)
     m_matrix_inverse_flatten = m_matrix_inverse.flatten()[:-4]
 
+
     ax2sax_full = normalise_image(ax2sax_full)
     msk = unet_model.predict(x=[ax2sax_full])
     msk_binary = msk >= mask_threshold
@@ -138,22 +139,24 @@ def predict_on_one_3d_file(full_file_name,
     inv_msk = list()
 
     # compatible with three-channels in the unet - without background channel
-    if msk.shape[-1] == 3:
-        zero = np.zeros_like(msk[..., 0])
-        inv_msk.append(zero)
+    #if msk.shape[-1] == 3:
+        #zero = np.zeros_like(msk[..., 0])
+        #inv_msk.append(zero)
 
     for c in range(msk.shape[-1]):
+        msk_c = msk[..., c] *100
         inv_m, _ = m_transformer.predict(
-            x=[msk_binary[..., c], np.expand_dims(m_matrix_inverse_flatten, axis=0)])
-        inv_msk.append(inv_m[..., 0] >= mask_threshold)
+            x=[msk_c, np.expand_dims(m_matrix_inverse_flatten, axis=0)])
+        inv_msk.append(inv_m[..., 0] >= (mask_threshold*100))
     inv_msk = np.stack(inv_msk, axis=-1)
+    logging.info('shape: {}'.format(inv_msk.shape))
 
     # postprocessing
     if debug: logging.info('Predicted mask rotated to AX on original AX image - before postprocessing')
     if debug: show_2D_or_3D(ax_full_[::slice_n * 3], inv_msk[0][::slice_n * 3])
     plt.show()
 
-    inv_msk = from_channel_to_flat(inv_msk[0])
+    inv_msk = from_channel_to_flat(inv_msk[0], start_c=1)
 
     logging.info('DICE LV: {}'.format(metr.dice_coef_lv(ax_msk_full_gt.astype(np.float32),
                                                         transform_to_binary_mask(inv_msk).astype(np.float32)).numpy()))
@@ -166,6 +169,12 @@ def predict_on_one_3d_file(full_file_name,
     if postprocess:
         kernel = np.ones((5, 5), np.uint8)
         kernel_small = np.ones((3, 3), np.uint8)
+
+        # 3D morph operations
+
+
+
+
 
         # close small holes
         inv_msk = np.stack([cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel) for img in inv_msk], axis=0)

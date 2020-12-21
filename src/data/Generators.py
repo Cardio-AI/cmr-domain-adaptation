@@ -319,13 +319,14 @@ class DataGenerator(BaseGenerator):
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, 'resampled')
         t1 = time()
 
-        img_nda = clip_quantile(img_nda, .999)
+        #img_nda = clip_quantile(img_nda, .999)
+        img_nda = clip_quantile(img_nda, .999, 0.1)
+        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
+
         if not self.MASKS:
             # yields two images
-            mask_nda = clip_quantile(mask_nda, .999)
-
-        img_nda = normalise_image(img_nda, normaliser=self.SCALER)
-        if not self.MASKS:  # yields the image two times for an autoencoder
+            #mask_nda = clip_quantile(mask_nda, .999)
+            mask_nda = clip_quantile(mask_nda, .999, 0.1)
             mask_nda = normalise_image(mask_nda, normaliser=self.SCALER)
 
         self.__plot_state_if_debug__(img_nda, mask_nda, t1, '{} normalized image:'.format(self.SCALER))
@@ -559,7 +560,8 @@ class CycleMotionDataGenerator(DataGenerator):
             # TODO: implement augmentation, remember params and apply to the other images
             raise NotImplementedError
 
-        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: clip_quantile(x, .999),
+        nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: clip_quantile(x, .999, 0.1),
+
                                                       [nda_ax, nda_ax2sax, nda_sax, nda_sax2ax])
 
         nda_ax, nda_ax2sax, nda_sax, nda_sax2ax = map(lambda x: normalise_image(x, normaliser=self.SCALER),

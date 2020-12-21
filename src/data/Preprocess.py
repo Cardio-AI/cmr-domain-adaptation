@@ -525,15 +525,20 @@ def from_channel_to_flat(binary_mask, start_c=0):
     # convert to bool nda to allow later indexing
     binary_mask = binary_mask >= 0.5
 
-    # reduce the shape by the channels
+    # reduce the shape by 1
     temp = np.zeros(binary_mask.shape[:-1], dtype=np.uint8)
+    labels = list(range(binary_mask.shape[-1]))
+    # swap the last two elements, from either 0-4 or 0-3
+    #labels[-1], labels[-2] = labels[-2], labels[-1]
 
-    for c in range(binary_mask.shape[-1]):
+    # order: RV, LV, MYo
+    for c in labels:
+    #for c in range(binary_mask.shape[-1]):
         temp[binary_mask[..., c]] = c + start_c
     return temp
 
 
-def clip_quantile(img_nda, upper_quantile=.999):
+def clip_quantile(img_nda, upper_quantile=.999, lower_boundary=0.0):
     """
     clip to values between 0 and .999 quantile
     :param img_nda:
@@ -542,7 +547,7 @@ def clip_quantile(img_nda, upper_quantile=.999):
     """
 
     ninenine_q = np.quantile(img_nda.flatten(), upper_quantile, overwrite_input=False)
-    return np.clip(img_nda, 0, ninenine_q)
+    return np.clip(img_nda, lower_boundary, ninenine_q)
 
 
 def normalise_image(img_nda, normaliser='minmax'):
