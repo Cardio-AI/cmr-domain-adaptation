@@ -25,8 +25,8 @@ Authors:
 >Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
 Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
 
-- The corresponding paper is currently under review for a special issue called "Annotation-Efficient Deep Learning for Medical Imaging" @ IEEE TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf)) -- currently under minor revision
-- The bibtex info and a link to the paper will be added as soon as it got accepted and published.
+- The corresponding paper is accepted (13.01.2020) for a special issue called "Annotation-Efficient Deep Learning for Medical Imaging" @ IEEE TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf))
+- The bibtex info and a link to the paper will be added as soon as it got published.
 
 
 # Author Links:
