@@ -4,7 +4,7 @@ This repo contains code to train a deep learning model for Unsupervised Domain A
 
 The trained model is able to transform an axial (AX) CMR into the patient specific short-axis (SAX) direction.
 The following gif shows exemplary the learning progress of this model. Slices along z-direction are shown horizontally. 
-Each temporal frame shows the AX2SAX prediction of the model after it is trained for one additional epoch. At the end of the learning process, the model is able to transform the data set such that it corresponds to a short-axis view, which can be segmented more reliably by the pre-trained short-axis segmentation module. Finally the inverse transformation could be applied to the segmentation, which results in a automatically segmented AX CMR. For the training of this UDA model no AX nor SAX GT segmentations are required. The model learns from paired AX/SAX CMR image pairs and any pre-trained (public) SAX segmentation model.
+Each temporal frame shows the AX2SAX prediction of the model after it is trained for one additional epoch. At the end of the learning process, the model is able to transform the data set such that it corresponds to a short-axis view, which can be segmented more reliably by the pre-trained short-axis segmentation module. Finally the inverse transformation could be applied to the segmentation, which results in a automatically segmented AX CMR. For the training of this UDA model no AX nor SAX GT segmentations are required. The model learns from paired AX/SAX CMR image pairs and a pre-trained (public) SAX segmentation model.
 
 ![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
 
