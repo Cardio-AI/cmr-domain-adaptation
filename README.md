@@ -18,29 +18,26 @@ Each temporal frame shows the AX2SAX prediction of the model after it is trained
 
 # Paper:
 
-Title:
->Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks
-Link to original paper: [IEEE TMI paper link](https://ieeexplore.ieee.org/document/9328840)
-
-Authors:
->Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
-Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
-
-- The corresponding paper is accepted (13.01.2020) for a special issue called "Annotation-Efficient Deep Learning for Medical Imaging" @ IEEE TMI (cf. [TMI Special Issue Call](https://www.embs.org/wp-content/uploads/2020/04/Special_Issue_CFP_DL4MI.pdf))
-- A pre-print version is available here: [arxiv](http://arxiv.org/abs/2101.07653)
-
-Cite:
 Please cite the following paper if you use/modify or adapt part of the code from this repository:
->@article{Koehler_2021,
->   title={Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks},
->   ISSN={1558-254X},
->   url={http://dx.doi.org/10.1109/TMI.2021.3052972},
->   DOI={10.1109/tmi.2021.3052972},
->   journal={IEEE Transactions on Medical Imaging},
->   publisher={Institute of Electrical and Electronics Engineers (IEEE)},
->   author={Koehler, Sven and Hussain, Tarique and Blair, Zach and Huffaker, Tyler and Ritzmann, Florian and Tandon, Animesh and Pickardt, Thomas and Sarikouch, Samir and Sarikouch, Samir and Latus, Heiner and et al.},
->   year={2021},
->   pages={1–1}
+
+S. Koehler, T. Hussain, Z. Blair, T. Huffaker, F. Ritzmann, A. Tandon,
+T. Pickardt, S. Sarikouch, H. Latus, G. Greil, I. Wolf, S. Engelhardt, "Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks," in IEEE Transactions on Medical Imaging (TMI), early access, doi: 10.1109/TMI.2021.3052972.
+
+- Link to original paper: [IEEE TMI paper link](https://ieeexplore.ieee.org/document/9328840) (accepted 13.1.2021)
+- A pre-print version is available here: [arxiv-Preprint](http://arxiv.org/abs/2101.07653)
+
+Bibtex:
+
+>@article{Koehler_2021, <br>
+>   title={Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks},<br>
+>   ISSN={1558-254X},<br>
+>   url={http://dx.doi.org/10.1109/TMI.2021.3052972},<br>
+>   DOI={10.1109/tmi.2021.3052972},<br>
+>   journal={IEEE Transactions on Medical Imaging},<br>
+>   publisher={Institute of Electrical and Electronics Engineers (IEEE)},<br>
+>   author={Koehler, Sven and Hussain, Tarique and Blair, Zach and Huffaker, Tyler and Ritzmann, Florian and Tandon, Animesh and Pickardt, Thomas and Sarikouch, Samir and Sarikouch, Samir and Latus, Heiner and Greil, Gerald and Wolf, Ivo and Engelhardt, Sandy},
+>   year={2021},<br>
+>   pages={1–1}<br>
 >}
 
 
