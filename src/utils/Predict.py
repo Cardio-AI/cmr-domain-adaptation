@@ -1,7 +1,8 @@
 import cv2
 import tensorflow as tf
 from src.data.Dataset import copy_meta_and_save
-from src.data.Preprocess import normalise_image, ensure_dir, from_channel_to_flat, transform_to_binary_mask
+from src.data.Preprocess import normalise_image, ensure_dir, from_channel_to_flat, transform_to_binary_mask, \
+    clip_quantile
 from src.data.Postprocess import undo_generator_steps, clean_3d_prediction_3d_cc
 from src.data.Dataset import get_reference_nrrd
 from src.models.SpatialTransformer import create_affine_transformer_fixed
@@ -14,6 +15,7 @@ import glob
 import numpy as np
 import SimpleITK as sitk
 import matplotlib.pyplot as plt
+import scipy
 
 def predict_on_one_3d_file(full_file_name,
                            filename,
@@ -71,7 +73,8 @@ def predict_on_one_3d_file(full_file_name,
     mask_threshold = 0.5
     figure_export = 'reports/figures/temp'
     ensure_dir(figure_export)
-
+    kernel_3d = np.ones((5, 5, 5))
+    temp_dir = 'data/predicted/temp/ax2sax/'
 
     # define a different logging level and plot the generator steps
     if debug: logging.info('Prediction on AX volume:')
@@ -115,6 +118,7 @@ def predict_on_one_3d_file(full_file_name,
     if debug: show_2D_or_3D(ax2sax_full[0][::slice_n * 3])
     plt.show()
 
+    # create the scaled inverse matrix to go from sax to ax
     # create a square ident matrix slice m into it
     m_matrix = np.identity(4)
     # slice m (3,4) into identity (4,4)
@@ -124,10 +128,28 @@ def predict_on_one_3d_file(full_file_name,
     m_matrix_inverse_flatten = m_matrix_inverse.flatten()[:-4]
 
 
-    ax2sax_full = normalise_image(ax2sax_full)
+
     msk = unet_model.predict(x=[ax2sax_full])
     msk_binary = msk >= mask_threshold
+    # we can smooth the sax predictions
+    #msk_binary = np.stack([scipy.ndimage.binary_closing(msk_binary[..., c][0], structure=kernel_3d, iterations=1, output=None,
+    #                                                 origin=0, border_value=1) for c in range(msk_binary.shape[-1])],axis=-1)
+
     msk_binary = msk_binary.astype(np.float32)
+
+    # export of the ax2sax image as dicom file
+    if debug:
+        ensure_dir(temp_dir)
+        temp_ax2sax_img = ax2sax_full[0].astype(np.float32)
+        temp_ax2sax_img = sitk.GetImageFromArray(temp_ax2sax_img)
+        temp_ax2sax_img.SetSpacing(cfg['SPACING'])
+        sitk.WriteImage(temp_ax2sax_img, '{}{}'.format(temp_dir, 'ax2sax_img.nrrd'))
+
+        temp_ax2sax_msk = from_channel_to_flat(msk_binary[0], start_c=1)
+        temp_ax2sax_msk = sitk.GetImageFromArray(temp_ax2sax_msk)
+        temp_ax2sax_msk.SetSpacing(cfg['SPACING'])
+        sitk.WriteImage(temp_ax2sax_msk, '{}{}'.format(temp_dir, 'ax2sax_msk.nrrd'))
+
 
     if debug: logging.info('Predicted mask')
     if debug: show_2D_or_3D(ax2sax_full[0][::slice_n * 3], msk_binary[0][::slice_n * 3], save=save_plots,
@@ -145,39 +167,38 @@ def predict_on_one_3d_file(full_file_name,
 
     for c in range(msk.shape[-1]):
         msk_c = msk[..., c] *100
-        inv_m, _ = m_transformer.predict(
+        msk_c, _ = m_transformer.predict(
             x=[msk_c, np.expand_dims(m_matrix_inverse_flatten, axis=0)])
-        inv_msk.append(inv_m[..., 0] >= (mask_threshold*100))
+        msk_c = msk_c[..., 0] >= (mask_threshold*100)
+        inv_msk.append(msk_c[0])
+
     inv_msk = np.stack(inv_msk, axis=-1)
     logging.info('shape: {}'.format(inv_msk.shape))
 
     # postprocessing
     if debug: logging.info('Predicted mask rotated to AX on original AX image - before postprocessing')
-    if debug: show_2D_or_3D(ax_full_[::slice_n * 3], inv_msk[0][::slice_n * 3])
+    if debug: show_2D_or_3D(ax_full_[::slice_n * 3], inv_msk[::slice_n * 3])
     plt.show()
 
-    inv_msk = from_channel_to_flat(inv_msk[0], start_c=1)
+    #inv_msk = from_channel_to_flat(inv_msk[0], start_c=1)
 
     logging.info('DICE LV: {}'.format(metr.dice_coef_lv(ax_msk_full_gt.astype(np.float32),
-                                                        transform_to_binary_mask(inv_msk).astype(np.float32)).numpy()))
+                                                        (inv_msk).astype(np.float32)).numpy()))
     logging.info('DICE RV: {}'.format(metr.dice_coef_rv(ax_msk_full_gt.astype(np.float32),
-                                                        transform_to_binary_mask(inv_msk).astype(np.float32)).numpy()))
+                                                        (inv_msk).astype(np.float32)).numpy()))
     logging.info('DICE MYO: {}'.format(metr.dice_coef_myo(ax_msk_full_gt.astype(np.float32),
-                                                          transform_to_binary_mask(inv_msk).astype(
-                                                              np.float32)).numpy()))
+                                                          (inv_msk).astype(np.float32)).numpy()))
 
     if postprocess:
         kernel = np.ones((5, 5), np.uint8)
         kernel_small = np.ones((3, 3), np.uint8)
 
-        # 3D morph operations
+        # 3D morph operations per label
+        inv_msk = np.stack([scipy.ndimage.binary_closing(inv_msk[...,c], structure=kernel_3d, iterations=1, output=None, origin=0, border_value=0) for c in range(inv_msk.shape[-1])],axis=-1)
+        inv_msk = from_channel_to_flat(inv_msk, start_c=1)
 
-
-
-
-
-        # close small holes
-        inv_msk = np.stack([cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel) for img in inv_msk], axis=0)
+        # 2D
+        """inv_msk = np.stack([cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel) for img in inv_msk], axis=0)
         if debug: logging.info('Predicted mask rotated to AX on original AX image - after closing')
         if debug: show_2D_or_3D(ax_full_[::slice_n * 3], inv_msk[::slice_n * 3])
         plt.show()
@@ -186,7 +207,7 @@ def predict_on_one_3d_file(full_file_name,
         inv_msk = np.stack([cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel, iterations=1) for img in inv_msk], axis=0)
         if debug: logging.info('Predicted mask rotated to AX on original AX image - after opening')
         if debug: show_2D_or_3D(ax_full_[::slice_n * 3], inv_msk[::slice_n * 3])
-        plt.show()
+        plt.show()"""
 
     # Finally keep only one CC per label
     inv_msk = clean_3d_prediction_3d_cc(inv_msk)
