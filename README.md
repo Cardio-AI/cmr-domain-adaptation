@@ -31,17 +31,17 @@ Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy En
 
 Cite:
 Please cite the following paper if you use/modify or adapt part of the code from this repository:
-"""@article{Koehler_2021,
-   title={Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks},
-   ISSN={1558-254X},
-   url={http://dx.doi.org/10.1109/TMI.2021.3052972},
-   DOI={10.1109/tmi.2021.3052972},
-   journal={IEEE Transactions on Medical Imaging},
-   publisher={Institute of Electrical and Electronics Engineers (IEEE)},
-   author={Koehler, Sven and Hussain, Tarique and Blair, Zach and Huffaker, Tyler and Ritzmann, Florian and Tandon, Animesh and Pickardt, Thomas and Sarikouch, Samir and Sarikouch, Samir and Latus, Heiner and et al.},
-   year={2021},
-   pages={1–1}
-}"""
+>@article{Koehler_2021,
+>   title={Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks},
+>   ISSN={1558-254X},
+>   url={http://dx.doi.org/10.1109/TMI.2021.3052972},
+>   DOI={10.1109/tmi.2021.3052972},
+>   journal={IEEE Transactions on Medical Imaging},
+>   publisher={Institute of Electrical and Electronics Engineers (IEEE)},
+>   author={Koehler, Sven and Hussain, Tarique and Blair, Zach and Huffaker, Tyler and Ritzmann, Florian and Tandon, Animesh and Pickardt, Thomas and Sarikouch, Samir and Sarikouch, Samir and Latus, Heiner and et al.},
+>   year={2021},
+>   pages={1–1}
+>}
 
 
 # Author Links:
