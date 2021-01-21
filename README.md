@@ -41,12 +41,12 @@ Bibtex:
 >}
 
 
-# Author Links:
+# Institutions:
 
 >- [Heidelberg University Hospital, WG Artificial Intelligence in Cardiovascular Medicine (AICM)](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
 >- [German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
 >- [UT Southwestern Medical Center, Pediatric Cardiology](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
->- [Departement of Computer Science, University Of Applied Science Mannheim](https://www.informatik.hs-mannheim.de/wir/menschen/professoren/prof-dr-ivo-wolf.html)
+>- [Department of Computer Science, University Of Applied Science Mannheim](https://www.informatik.hs-mannheim.de/wir/menschen/professoren/prof-dr-ivo-wolf.html)
 
 
 # How to use:
