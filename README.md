@@ -1,13 +1,16 @@
 # 3D CMR-Domain-Adaptation
 
-This repo contains code to train a deep learning model for Unsupervised Domain Adaptation (UDA) of 3D cardiac magnetic resonance (CMR) cine images to transform from axial to short-axis orientation. The task associated to the domain adaptation is to perform a segmentation task via a pre-trained network, and the results are leveraged to guide the transformation process (rigid transform via spatial transformer networks).
+This repo contains code to train a deep learning model for **Unsupervised Domain Adaptation (UDA)** of 3D cardiac magnetic resonance (CMR) cine images to **transform from axial to short-axis orientation**. The task associated to the domain adaptation is to perform a **segmentation task via a pre-trained fixed network**, and the results are leveraged to guide the transformation process (rigid transform via spatial transformer networks).
 
-The trained model is able to transform an axial (AX) CMR into the patient specific short-axis (SAX) direction.
-The following gif shows exemplary the learning progress of this model. Slices along z-direction are shown horizontally. 
-Each temporal frame shows the AX2SAX prediction of the model after it is trained for one additional epoch. At the end of the learning process, the model is able to transform the data set such that it corresponds to a short-axis view, which can be segmented more reliably by the pre-trained short-axis segmentation module. Finally the inverse transformation could be applied to the segmentation, which results in a automatically segmented AX CMR. For the training of this UDA model no AX nor SAX GT segmentations are required. The model learns from paired AX/SAX CMR image pairs and a pre-trained (public) SAX segmentation model.
+The trained model is able to transform an axial (AX) CMR into the patient specific short-axis (SAX) direction. The model learns from paired AX/SAX CMR image pairs and a pre-trained SAX segmentation model.
+
+The following gif exemplary visualizes the learning progress of this model. Slices along z-direction are shown horizontally. 
 
 ![Unsupervised Domain adaptation learning](https://github.com/Cardio-AI/3d-mri-domain-adaption/blob/master/reports/ax_sax_learning_example.gif "learning progress") 
 
+Each temporal frame shows the AX2SAX prediction of the model after successive epochs. At the end of the learning process, the model is able to transform the data set such that it corresponds to a short-axis view, which can be segmented more reliably by the pre-trained short-axis segmentation module. Finally the inverse transformation could be applied to the segmentation, which results in a automatically segmented AX CMR. For the training of this transformation model, neither AX nor SAX ground truth segmentations are required. 
+
+A special **Euler2Affine Layer** was implemented to restrict the transform of the spatial transformer network to be rigid and invertible.
 
 # Overview
 
@@ -43,7 +46,7 @@ Bibtex:
 
 # Institutions:
 
->- [Heidelberg University Hospital, WG Artificial Intelligence in Cardiovascular Medicine (AICM)](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
+>- [Heidelberg University Hospital, Artificial Intelligence in Cardiovascular Medicine (AICM) Group](https://www.klinikum.uni-heidelberg.de/chirurgische-klinik-zentrum/herzchirurgie/forschung/ag-artificial-intelligence-in-cardiovascular-medicine)
 >- [German Competence network for Congenital heart defects](https://www.kompetenznetz-ahf.de/en/about-us/competence-network/)
 >- [UT Southwestern Medical Center, Pediatric Cardiology](https://www.utsouthwestern.edu/education/medical-school/departments/pediatrics/divisions/cardiology/)
 >- [Department of Computer Science, University Of Applied Science Mannheim](https://www.informatik.hs-mannheim.de/wir/menschen/professoren/prof-dr-ivo-wolf.html)
