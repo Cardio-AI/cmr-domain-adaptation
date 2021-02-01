@@ -1,9 +1,8 @@
 """
-Unsupervised Domain Adaption from AX to SAX domain
-Paper for the code: Unsupervised Domain Adaptation from Axial toShort-Axis Multi-Slice Cardiac MR Images byIncorporating Pretrained Task Networks
-Currently in Review at TMI
-Sven Koehler, Tarique Hussain, Zach Blair, Tyler Huffaker, Florian Ritzmann, Animesh Tandon,
-Thomas Pickardt, Samir Sarikouch, Heiner Latus, Gerald Greil, Ivo Wolf, Sandy Engelhardt
+Please cite this paper if you re-use parts of the code
+S. Koehler, T. Hussain, Z. Blair, T. Huffaker, F. Ritzmann, A. Tandon, T. Pickardt, S. Sarikouch, H. Latus, G. Greil, I. Wolf, S. Engelhardt, 
+"Unsupervised Domain Adaptation from Axial to Short-Axis Multi-Slice Cardiac MR Images by Incorporating Pretrained Task Networks," 
+in IEEE Transactions on Medical Imaging (TMI), early access, doi: 10.1109/TMI.2021.3052972.
 
 The spatial transformer layer is based on the neuron project:
 Unsupervised Learning for Fast Probabilistic Diffeomorphic Registration
